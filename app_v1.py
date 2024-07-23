@@ -222,78 +222,68 @@ fig.update_layout(template='plotly_dark',
 st.plotly_chart(fig)
 
 # Generate data points for the ripple effect
-n_points = 322
+n_points = 1000
 x_ripple = np.random.uniform(filtered_data['amount'].min(), filtered_data['amount'].max(), n_points)
 y_ripple = np.random.uniform(filtered_data['credit_debit_value'].min(), filtered_data['credit_debit_value'].max(), n_points)
 z_ripple = np.random.uniform(filtered_data['balance'].min(), filtered_data['balance'].max(), n_points)
-size_ripple = np.random.uniform(1, 10, n_points)
+size_ripple = np.random.uniform(5, 100, n_points)
 
 # Generate distinguishable colors for the ripple effect
 color_ripple = np.random.choice(px.colors.qualitative.Plotly, n_points)
 
-# Create the base scatter plot
+# Define your date range
+start_date_scatter_3d = start_date
+end_date_scatter_3d = '2024-12-31'
+
+# Create the base scatter plot with adjusted date range
 fig = px.scatter_3d(
     filtered_data,
     x='amount',
     y='transaction_date',
     z='balance',
-    color='transaction_category',
-    size='amount',
-    width=644,
+    color='amount',
+    size='balance',
+    width=966,
     height=644,
-    title='3D Scatter Plot',
+    title='Distribution of transaction values against balance over time',
     color_continuous_scale=px.colors.sequential.Jet,
-    opacity=0.5 , # Adjust the base scatter plot transparency
-    range_color=(10, 1000)
-)
-
-# Add the ripple effect scatter plot
-fig.add_trace(
-    go.Scatter3d(
-        x=x_ripple,
-        y=y_ripple,
-        z=z_ripple,
-        mode='markers',
-        marker=dict(
-            size=size_ripple,
-            color=color_ripple,  # Set color of ripples
-            opacity=0.35,  # Adjust transparency of ripples
-            line=dict(width=0.05)  # Remove outline of ripples
-        ),
-        showlegend=False
-    )
+    opacity=1,  # Adjust the base scatter plot transparency
+    range_color=(100, 15000),
+    labels={'transaction_date': 'Transaction Date'},  # Label for the y-axis
 )
 
 # Customize the layout
 fig.update_layout(
     template='plotly_dark',  # Dark theme
-    width=644,  # Width of the plot
-    height=644,  # Height of the plot
     #plot_bgcolor='rgba(0,0,0,1)',  # Plot background color
     #paper_bgcolor='rgba(0,0,0,1)',  # Paper background color
     xaxis_title='Transaction Date',  # X-axis label
-    yaxis_title='Amount'  # Y-axis label
+    yaxis_title='Amount',
+        scene=dict(
+        yaxis=dict(
+            range=[start_date_scatter_3d, end_date_scatter_3d]
+        )
+    )
 )
 
 # Refine the grid
 fig.update_xaxes(
     showgrid=True,  # Show gridlines on the x-axis
-    gridwidth=0.1,  # Width of the gridlines
-    #gridcolor='black',  # Color of the gridlines
+    gridwidth=1,  # Width of the gridlines
+    gridcolor='black',  # Color of the gridlines
     tickfont=dict(size=10)  # Font size of the ticks on the x-axis
 )
 
 fig.update_yaxes(
     showgrid=True,  # Show gridlines on the y-axis
-    gridwidth=0.1,  # Width of the gridlines
-    #gridcolor='blue',  # Color of the gridlines
+    gridwidth=1,  # Width of the gridlines
+    gridcolor='blue',  # Color of the gridlines
     tickfont=dict(size=10)  # Font size of the ticks on the y-axis
 )
 
 fig.update_traces(
-    line=dict(width=1),
-    marker=dict(size=4, symbol='circle'),
-    selector=dict(mode='lines'),
+    line=dict(width=5),
+    marker=dict(size=5, symbol='circle'),
 )
 st.plotly_chart(fig)
 
