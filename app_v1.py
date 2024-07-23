@@ -248,7 +248,7 @@ fig = px.scatter_3d(
     title='Distribution of transaction values against balance over time',
     color_continuous_scale=px.colors.sequential.Jet,
     opacity=1,  # Adjust the base scatter plot transparency
-    range_color=(100, 15000),
+    range_color=(500, 50000),
     labels={'transaction_date': 'Transaction Date'},  # Label for the y-axis
 )
 
