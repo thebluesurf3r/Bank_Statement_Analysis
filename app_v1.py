@@ -235,7 +235,7 @@ color_ripple = np.random.choice(px.colors.qualitative.Plotly, n_points)
 fig = px.scatter_3d(
     filtered_data,
     x='amount',
-    y='credit_debit_value',
+    y='transaction_date',
     z='balance',
     color='transaction_category',
     size='amount',
