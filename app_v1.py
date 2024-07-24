@@ -238,11 +238,11 @@ end_date_scatter_3d = '2024-12-31'
 # Create the base scatter plot with adjusted date range
 fig = px.scatter_3d(
     filtered_data,
-    x='amount',
-    y='transaction_date',
-    z='balance',
-    color='amount',
-    size='balance',
+    x='balance',
+    y='amount',
+    z='transaction_date',
+    color='balance',
+    size='amount',
     width=966,
     height=644,
     title='Distribution of transaction values against balance over time',
