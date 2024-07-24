@@ -168,17 +168,30 @@ max_end =pd.to_datetime(data['transaction_date'].max())
 
 # Calculate the number of days from the start date
 data['number_days'] = (data['transaction_date'] - max_start).dt.days + 1
-data['date_index'] = data['sl_no']
 
-date_index_start = data['date_index'].min()
-date_index_end = data['date_index'].max()
+# Convert max_start and max_end to days since max_start
+days_index_start = 0
+days_index_end = (max_end - max_start).days
 
-# Date range filter
-start_date = st.date_input('Start Date', value=max_start)
-end_date = st.date_input('End Date', value=max_end)
+# Create a slider for the date range
+slider_range = st.slider(
+    'Select Date Range',
+    min_value=days_index_start,
+    max_value=days_index_end,
+    value=(days_index_start, days_index_end)
+)
 
-filtered_data = data[(data['transaction_date'] >= max_start) & (data['transaction_date'] <= max_end)]
+# Convert the slider range back to dates
+start_date = max_start + pd.Timedelta(days=slider_range[0])
+end_date = max_start + pd.Timedelta(days=slider_range[1])
 
+st.write(f'Selected Start Date: {start_date}')
+st.write(f'Selected End Date: {end_date}')
+
+
+amount_threshold = st.number_input('Transaction Amount Threshold', min_value=10, value=500)
+
+filtered_data = data[(data['transaction_date'] >= start_date) & (data['transaction_date'] <= end_date)]
 # Define the function to format numeric values
 
 def format_numeric_values(numeric_values):
@@ -193,16 +206,13 @@ filtered_data[['amount', 'balance', 'net_balance']] = filtered_data[['amount', '
 filtered_data[['amount', 'balance', 'net_balance']] = filtered_data[['amount', 'balance', 'net_balance']].apply(pd.to_numeric)
 
 # Drop redundant columns
-columns_to_drop = ['chq___ref_no', 'transaction_number', 'sl_no', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
+columns_to_drop = ['chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
 
 processed_data = filtered_data.drop(columns=columns_to_drop)
 
-# Amount filter
-amount_threshold = st.number_input('Transaction Amount Threshold', min_value=10, value=500)
-
 # Display final processed data
-st.header("Filtered Data")
-st.dataframe(filtered_data)
+st.header("Processed Data")
+st.dataframe(processed_data)
 
 
 filtered_data_above = filtered_data[filtered_data['amount'] >= amount_threshold]
@@ -216,6 +226,7 @@ fig.update_layout(template='plotly_dark',
                   xaxis_title='Payment Method',
                   yaxis_title='Transaction Category'
 )
+
 
 st.plotly_chart(fig)
 
@@ -243,9 +254,6 @@ size_ripple = np.random.uniform(5, 100, n_points)
 # Generate distinguishable colors for the ripple effect
 color_ripple = np.random.choice(px.colors.qualitative.Plotly, n_points)
 
-# Define your date range
-start_date_scatter_3d = start_date
-end_date_scatter_3d = '2024-12-31'
 
 # Create the base scatter plot with adjusted date range
 fig = px.scatter_3d(
@@ -273,7 +281,7 @@ fig.update_layout(
     yaxis_title='Balance',
         scene=dict(
         yaxis=dict(
-            range=[start_date_scatter_3d, end_date_scatter_3d]
+            range=[days_index_start, days_index_end]
         )
     )
 )
