@@ -166,6 +166,13 @@ data['transaction_names'] = data['description'].apply(categorize_names)
 max_start = pd.to_datetime(data['transaction_date'].min())
 max_end =pd.to_datetime(data['transaction_date'].max())
 
+# Calculate the number of days from the start date
+data['number_days'] = (data['transaction_date'] - max_start).dt.days + 1
+data['date_index'] = data['sl_no']
+
+date_index_start = data['date_index'].min()
+date_index_end = data['date_index'].max()
+
 # Date range filter
 start_date = st.date_input('Start Date', value=max_start)
 end_date = st.date_input('End Date', value=max_end)
@@ -192,6 +199,11 @@ processed_data = filtered_data.drop(columns=columns_to_drop)
 
 # Amount filter
 amount_threshold = st.number_input('Transaction Amount Threshold', min_value=10, value=500)
+
+# Display final processed data
+st.header("Filtered Data")
+st.dataframe(filtered_data)
+
 
 filtered_data_above = filtered_data[filtered_data['amount'] >= amount_threshold]
 fig = px.box(filtered_data_above, x='payment_method_acronym', y='transaction_category')
@@ -223,9 +235,9 @@ st.plotly_chart(fig)
 
 # Generate data points for the ripple effect
 n_points = 1000
-x_ripple = np.random.uniform(filtered_data['amount'].min(), filtered_data['amount'].max(), n_points)
-y_ripple = np.random.uniform(filtered_data['credit_debit_value'].min(), filtered_data['credit_debit_value'].max(), n_points)
-z_ripple = np.random.uniform(filtered_data['balance'].min(), filtered_data['balance'].max(), n_points)
+x_ripple = np.random.uniform(filtered_data['balance'].min(), filtered_data['balance'].max(), n_points)
+y_ripple = np.random.uniform(filtered_data['amount'].min(), filtered_data['amount'].max(), n_points)
+z_ripple = np.random.uniform(filtered_data['number_days'].min(), filtered_data['number_days'].max(), n_points)
 size_ripple = np.random.uniform(5, 100, n_points)
 
 # Generate distinguishable colors for the ripple effect
@@ -240,7 +252,7 @@ fig = px.scatter_3d(
     filtered_data,
     x='balance',
     y='amount',
-    z='transaction_date',
+    z=filtered_data.index,
     color='balance',
     size='amount',
     width=966,
@@ -257,8 +269,8 @@ fig.update_layout(
     template='plotly_dark',  # Dark theme
     #plot_bgcolor='rgba(0,0,0,1)',  # Plot background color
     #paper_bgcolor='rgba(0,0,0,1)',  # Paper background color
-    xaxis_title='Transaction Date',  # X-axis label
-    yaxis_title='Amount',
+    xaxis_title='Amount',  # X-axis label
+    yaxis_title='Balance',
         scene=dict(
         yaxis=dict(
             range=[start_date_scatter_3d, end_date_scatter_3d]
@@ -282,8 +294,8 @@ fig.update_yaxes(
 )
 
 fig.update_traces(
-    line=dict(width=5),
-    marker=dict(size=5, symbol='circle'),
+    line=dict(width=6),
+    marker=dict(size=3, symbol='circle'),
 )
 st.plotly_chart(fig)
 
