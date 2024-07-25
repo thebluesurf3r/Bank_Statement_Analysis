@@ -14,25 +14,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.sidebar.markdown(
-    """
-    <style>
-    .sidebar-link {
-        font-size: 20px; /* Adjust the font size as needed */
-        color: white; /* Adjust the color as needed */
-        text-decoration: none;
-        transition: color 0.3s, text-decoration 0.3s; /* Smooth transition */
-    }
-    .sidebar-link:hover {
-        color: #FF5733; /* Change color on hover */
-        text-decoration: underline;
-    }
-    </style>
-    <a class="sidebar-link" href="https://thebluesurf3r.github.io" target="_blank">My Resume</a>
-    """,
-    unsafe_allow_html=True
-)
-
 # Title and Introduction
 st.title("Bank Statement Analysis and Visualization")
 st.markdown("""
@@ -451,3 +432,22 @@ plt.ylabel('Count')
 plt.xticks(rotation=45)
 plt.grid(True)
 st.pyplot(plt)
+
+st.sidebar.markdown(
+    """
+    <style>
+    .sidebar-link {
+        font-size: 20px; /* Adjust the font size as needed */
+        color: white; /* Adjust the color as needed */
+        text-decoration: none;
+        transition: color 0.3s, text-decoration 0.3s; /* Smooth transition */
+    }
+    .sidebar-link:hover {
+        color: #FF5733; /* Change color on hover */
+        text-decoration: underline;
+    }
+    </style>
+    <a class="sidebar-link" href="https://thebluesurf3r.github.io" target="_blank">My Resume</a>
+    """,
+    unsafe_allow_html=True
+)
