@@ -14,6 +14,25 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+st.sidebar.markdown(
+    """
+    <style>
+    .sidebar-link {
+        font-size: 20px; /* Adjust the font size as needed */
+        color: white; /* Adjust the color as needed */
+        text-decoration: none;
+        transition: color 0.3s, text-decoration 0.3s; /* Smooth transition */
+    }
+    .sidebar-link:hover {
+        color: #FF5733; /* Change color on hover */
+        text-decoration: underline;
+    }
+    </style>
+    <a class="sidebar-link" href="https://thebluesurf3r.github.io" target="_blank">My Resume</a>
+    """,
+    unsafe_allow_html=True
+)
+
 # Title and Introduction
 st.title("Bank Statement Analysis and Visualization")
 st.markdown("""
@@ -249,24 +268,17 @@ slider_range_amount = st.sidebar.slider(
     value=(min_balance, max_balance)
 )
 
-filtered_data = amount_filtered_data[(amount_filtered_data['balance'] >= min_balance) & (amount_filtered_data['balance'] <= max_amount)]
+balance_filtered_data = amount_filtered_data[(amount_filtered_data['amount'] >= min_amount) & (amount_filtered_data['amount'] <= max_amount)]
 
 # Drop redundant columns
 columns_to_drop = ['chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
 
-processed_data = filtered_data.drop(columns=columns_to_drop)
+processed_data = data.drop(columns=columns_to_drop)
 
-transaction_data_above = filtered_data[filtered_data['transaction_date'] >= start_date]
-transaction_data_below = filtered_data[filtered_data['transaction_date'] <= end_date]
-transaction_data_mid = filtered_data[filtered_data['transaction_date'] == (end_date - start_date)]
+filtered_data = balance_filtered_data[(balance_filtered_data['balance'] >= min_balance) & (balance_filtered_data['balance'] <= max_amount)]
 
 
-filtered_data_above = transaction_data_above[transaction_data_above['amount'] >= min_amount]
-filtered_data_below = transaction_data_below[transaction_data_below['amount'] < max_amount]
-filtered_data_mid = transaction_data_mid[filtered_data['amount'] == (min_amount-max_amount)]
-
-
-fig = px.box(filtered_data_above, x='payment_method_acronym', y='transaction_category')
+fig = px.box(filtered_data, x='payment_method_acronym', y='transaction_category')
 # Customize the layout
 fig.update_layout(
     width=966,
@@ -277,9 +289,6 @@ fig.update_layout(
     xaxis_title='Payment Method',
     yaxis_title='Transaction Category',
         scene=dict(
-        #xaxis=dict(
-        #    range=[min_amount, max_amount]
-        #),
         yaxis=dict(
             range=[days_index_start, days_index_end]
         )
@@ -303,7 +312,7 @@ fig.update_yaxes(
 st.plotly_chart(fig)
 
 
-fig = px.box(filtered_data_below, x='payment_method_acronym', y='transaction_category', )
+fig = px.box(filtered_data, x='payment_method_acronym', y='transaction_category', )
 # Customize the layout
 fig.update_layout(
     width=966,
