@@ -7,6 +7,13 @@ import seaborn as sns
 import re
 import numpy as np
 
+st.set_page_config(
+    page_title="Bank Statement Analzer",
+    page_icon="📊",  # Bar Chart emoji
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 # Title and Introduction
 st.title("Bank Statement Analysis and Visualization")
 st.markdown("""
