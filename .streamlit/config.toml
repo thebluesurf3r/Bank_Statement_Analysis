@@ -1,0 +1,45 @@
+# .streamlit/config.toml
+
+[server]
+# Define server settings
+headless = false
+port = 8501
+enableCORS = false
+enableWebsocketCompression = true  # Enable websocket compression for better performance
+enableXsrfProtection = true        # Enable XSRF protection
+serverAddress = "0.0.0.0"          # Server address
+fileWatcherType = "auto"           # Type of file watcher to use
+runOnSave = false                  # Rerun the script on file save
+
+[global]
+# General settings
+logLevel = "info"                  # Set the logging level ("debug", "info", "warning", "error")
+
+[caching]
+# Caching settings
+maxEntries = 100                   # Max number of entries in the cache
+ttl = 3600                         # Time-to-live for cache entries in seconds
+type = "memory"                    # Cache type: "memory", "disk", etc.
+
+[theme]
+# Theme settings
+base = "dark"                      # Base theme: "light" or "dark"
+primaryColor = "#1f77b4"           # Primary color
+backgroundColor = "#000000"        # Background color
+secondaryBackgroundColor = "#31333F" # Secondary background color
+textColor = "#FAFAFA"              # Text color
+font = "sans serif"                # Font: "serif" or "sans serif"
+
+[runner]
+# Script execution settings
+magicEnabled = true                # Enable "magic" features
+installTracer = false              # Install the tracer
+
+[client]
+# Client settings
+caching = true                     # Enable client-side caching
+displayEnabled = true              # Enable display
+
+[deprecation]
+# Deprecation warnings
+showfileUploaderEncoding = false   # Show deprecation warning for file uploader encoding

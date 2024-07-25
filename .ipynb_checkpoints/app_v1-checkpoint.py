@@ -23,24 +23,18 @@ Welcome to the Bank Statement Analysis and Visualization App! This intuitive too
 - **Interactive Visualizations**: Enjoy dynamic and interactive charts and graphs that make understanding your financial data a breeze.
 """)
 
-# Sample data loading function with caching
-@st.cache_data
-def load_data():
-    # Replace with your actual data loading logic
-    data = pd.read_csv('merged_data.csv')
-    return data
+# Define the file path and load data
+file_path = 'merged_data.csv'
+data = pd.read_csv(file_path)
 
-# Load data
-data = load_data()
+# Clean and format columns
+data['Transaction Date'] = data['Transaction Date'].str.replace('-', '/', regex=False)
+data['Value Date'] = data['Value Date'].str.replace('-', '/', regex=False)
 
 def format_column_names(column_names):
     return column_names.str.replace(' ', '_').str.replace('-', '_').str.replace('/', '_').str.replace('.', '').str.lower()
 
 data.columns = format_column_names(data.columns)
-
-# Clean and format columns
-data['transaction_date'] = data['transaction_date'].str.replace('-', '/', regex=False)
-data['value_date'] = data['value_date'].str.replace('-', '/', regex=False)
 
 # Convert dates
 data['transaction_date'] = pd.to_datetime(data['transaction_date'], format='%d/%m/%Y')
@@ -169,24 +163,6 @@ data['transaction_category'] = data['description'].apply(categorize_buckets)
 data['transaction_brands'] = data['description'].apply(categorize_brands)
 data['transaction_names'] = data['description'].apply(categorize_names)
 
-# Define the function to format numeric values
-def format_numeric_values(numeric_values):
-    # Remove commas
-    numeric_values = numeric_values.str.replace(',', '')
-    return numeric_values
-
-# Apply the function to the specified columns
-data[['amount', 'balance', 'net_balance']] = data[['amount', 'balance', 'net_balance']].apply(format_numeric_values)
-
-# Convert the columns to numeric data types
-data[['amount', 'balance', 'net_balance']] = data[['amount', 'balance', 'net_balance']].apply(pd.to_numeric)
-
-st.sidebar.title("Report Configuration")
-
-Keyword = st.sidebar.text_input("Enter a keyword to search:")
-
-# Date Range Slider
-
 max_start = pd.to_datetime(data['transaction_date'].min())
 max_end =pd.to_datetime(data['transaction_date'].max())
 
@@ -198,137 +174,72 @@ days_index_start = 0
 days_index_end = (max_end - max_start).days
 
 # Create a slider for the date range
-slider_range_date = st.sidebar.slider(
-    'Date Range',
+slider_range = st.slider(
+    'Select Date Range',
     min_value=days_index_start,
     max_value=days_index_end,
     value=(days_index_start, days_index_end)
 )
 
 # Convert the slider range back to dates
-start_date = max_start + pd.Timedelta(days=slider_range_date[0])
-end_date = max_start + pd.Timedelta(days=slider_range_date[1])
+start_date = max_start + pd.Timedelta(days=slider_range[0])
+end_date = max_start + pd.Timedelta(days=slider_range[1])
 
 st.write(f'Selected Start Date: {start_date}')
 st.write(f'Selected End Date: {end_date}')
 
-transaction_date_data = data[(data['transaction_date'] >= start_date) & (data['transaction_date'] <= end_date)]
 
-# Amount Slider
+amount_threshold = st.number_input('Transaction Amount Threshold', min_value=10, value=500)
 
-min_amount = transaction_date_data['amount'].min()
-max_amount = transaction_date_data['amount'].max()
+filtered_data = data[(data['transaction_date'] >= start_date) & (data['transaction_date'] <= end_date)]
+# Define the function to format numeric values
 
-# Create a slider for the date range
-slider_range_amount = st.sidebar.slider(
-    'Amount',
-    min_value=min_amount,
-    max_value=max_amount,
-    value=(min_amount, max_amount)
-)
+def format_numeric_values(numeric_values):
+    # Remove commas
+    numeric_values = numeric_values.str.replace(',', '')
+    return numeric_values
 
-amount_filtered_data = transaction_date_data[(transaction_date_data['amount'] >= min_amount) & (transaction_date_data['amount'] <= max_amount)]
+# Apply the function to the specified columns
+filtered_data[['amount', 'balance', 'net_balance']] = filtered_data[['amount', 'balance', 'net_balance']].apply(format_numeric_values)
 
-# Balance Slider
-
-min_balance = amount_filtered_data['balance'].min()
-max_balance = amount_filtered_data['balance'].max()
-
-# Create a slider for the date range
-slider_range_amount = st.sidebar.slider(
-    'Balance',
-    min_value=min_balance,
-    max_value=max_balance,
-    value=(min_balance, max_balance)
-)
-
-filtered_data = amount_filtered_data[(amount_filtered_data['balance'] >= min_balance) & (amount_filtered_data['balance'] <= max_amount)]
+# Convert the columns to numeric data types
+filtered_data[['amount', 'balance', 'net_balance']] = filtered_data[['amount', 'balance', 'net_balance']].apply(pd.to_numeric)
 
 # Drop redundant columns
 columns_to_drop = ['chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
 
 processed_data = filtered_data.drop(columns=columns_to_drop)
 
-transaction_data_above = filtered_data[filtered_data['transaction_date'] >= start_date]
-transaction_data_below = filtered_data[filtered_data['transaction_date'] <= end_date]
-transaction_data_mid = filtered_data[filtered_data['transaction_date'] == (end_date - start_date)]
+# Display final processed data
+st.header("Processed Data")
+st.dataframe(processed_data)
 
 
-filtered_data_above = transaction_data_above[transaction_data_above['amount'] >= min_amount]
-filtered_data_below = transaction_data_below[transaction_data_below['amount'] < max_amount]
-filtered_data_mid = transaction_data_mid[filtered_data['amount'] == (min_amount-max_amount)]
-
-
+filtered_data_above = filtered_data[filtered_data['amount'] >= amount_threshold]
 fig = px.box(filtered_data_above, x='payment_method_acronym', y='transaction_category')
-# Customize the layout
-fig.update_layout(
-    width=966,
-    height=644,              
-    template='plotly_dark',  # Dark theme
-    #plot_bgcolor='rgba(0,0,0,1)',  # Plot background color
-    #paper_bgcolor='rgba(0,0,0,1)',  # Paper background color
-    xaxis_title='Payment Method',
-    yaxis_title='Transaction Category',
-        scene=dict(
-        #xaxis=dict(
-        #    range=[min_amount, max_amount]
-        #),
-        yaxis=dict(
-            range=[days_index_start, days_index_end]
-        )
-    )
-)
-# Refine the grid
-fig.update_xaxes(
-    showgrid=True,  # Show gridlines on the x-axis
-    gridwidth=1,  # Width of the gridlines
-    gridcolor='black',  # Color of the gridlines
-    tickfont=dict(size=10)  # Font size of the ticks on the x-axis
+
+fig.update_layout(template='plotly_dark',
+                  width=966,
+                  height=644,
+                  #plot_bgcolor='rgba(0,0,0,1)',
+                  #paper_bgcolor='rgba(0,0,0,1)',
+                  xaxis_title='Payment Method',
+                  yaxis_title='Transaction Category'
 )
 
-fig.update_yaxes(
-    showgrid=True,  # Show gridlines on the y-axis
-    gridwidth=1,  # Width of the gridlines
-    gridcolor='blue',  # Color of the gridlines
-    tickfont=dict(size=10)  # Font size of the ticks on the y-axis
-)
 
 st.plotly_chart(fig)
 
-
+filtered_data_below = filtered_data[filtered_data['amount'] < amount_threshold]
 fig = px.box(filtered_data_below, x='payment_method_acronym', y='transaction_category', )
-# Customize the layout
-fig.update_layout(
-    width=966,
-    height=644,              
-    template='plotly_dark',  # Dark theme
-    #plot_bgcolor='rgba(0,0,0,1)',  # Plot background color
-    #paper_bgcolor='rgba(0,0,0,1)',  # Paper background color
-    xaxis_title='Payment Method',
-    yaxis_title='Transaction Category',
-        scene=dict(
-        #xaxis=dict(
-        #    range=[min_amount, max_amount]
-        #),
-        yaxis=dict(
-            range=[days_index_start, days_index_end]
-        )
-    )
-)
 
-# Refine the grid
-fig.update_xaxes(
-    showgrid=True,  # Show gridlines on the x-axis
-    gridwidth=1,  # Width of the gridlines
-    gridcolor='black',  # Color of the gridlines
-    tickfont=dict(size=10)  # Font size of the ticks on the x-axis
-)
-
-fig.update_yaxes(
-    showgrid=True,  # Show gridlines on the y-axis
-    gridwidth=1,  # Width of the gridlines
-    gridcolor='blue',  # Color of the gridlines
-    tickfont=dict(size=10)  # Font size of the ticks on the y-axis
+fig.update_layout(template='plotly_dark',
+                  width=966,
+                  height=644,
+                  #plot_bgcolor='rgba(0,0,0,1)',
+                  #paper_bgcolor='rgba(0,0,0,1)',
+                  xaxis_title='Payment Method',
+                  yaxis_title='Transaction Category'
 )
 
 st.plotly_chart(fig)
@@ -342,6 +253,7 @@ size_ripple = np.random.uniform(5, 100, n_points)
 
 # Generate distinguishable colors for the ripple effect
 color_ripple = np.random.choice(px.colors.qualitative.Plotly, n_points)
+
 
 # Create the base scatter plot with adjusted date range
 fig = px.scatter_3d(
@@ -362,17 +274,12 @@ fig = px.scatter_3d(
 
 # Customize the layout
 fig.update_layout(
-    width=966,
-    height=644,              
     template='plotly_dark',  # Dark theme
     #plot_bgcolor='rgba(0,0,0,1)',  # Plot background color
     #paper_bgcolor='rgba(0,0,0,1)',  # Paper background color
-    xaxis_title='Amount',
+    xaxis_title='Amount',  # X-axis label
     yaxis_title='Balance',
         scene=dict(
-        xaxis=dict(
-            range=[min_amount, max_amount]
-        ),
         yaxis=dict(
             range=[days_index_start, days_index_end]
         )
@@ -400,8 +307,17 @@ fig.update_traces(
 )
 st.plotly_chart(fig)
 
-# Distribution visualizations
-st.header("Distribution Visualizations")
+# Transactions above threshold
+st.header(f"Transactions Above {amount_threshold}")
+st.dataframe(filtered_data_above[['transaction_date', 'description', 'amount', 'balance', 'transaction_category', 'transaction_brands', 'transaction_names', 'payment_method']])
+
+# Transactions below threshold
+st.header(f"Transactions Below {amount_threshold}")
+st.dataframe(filtered_data_below[['transaction_date', 'description', 'amount', 'balance', 'transaction_category', 'transaction_brands', 'transaction_names', 'payment_method']])
+
+
+# Interactive visualizations
+st.header("Interactive Visualizations")
 bucket_counts = filtered_data['transaction_category'].value_counts()
 brand_counts = filtered_data['transaction_brands'].value_counts()
 name_counts = filtered_data['transaction_names'].value_counts()
@@ -435,3 +351,7 @@ plt.ylabel('Count')
 plt.xticks(rotation=45)
 plt.grid(True)
 st.pyplot(plt)
+
+# Display final processed data
+st.header("Processed Data")
+st.dataframe(processed_data)
