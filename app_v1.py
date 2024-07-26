@@ -275,7 +275,7 @@ processed_data = data.drop(columns=columns_to_drop)
 filtered_data = balance_filtered_data[(balance_filtered_data['balance'] >= min_balance) & (balance_filtered_data['balance'] <= max_amount)]
 
 
-fig = px.density_heatmap(filtered_data, x='transaction_date', y='balance')
+fig = px.line(filtered_data, x='transaction_date', y='balance')
 
 fig.add_trace(go.Contour(
     x=data['transaction_date'],  # Use 'payment_method_acronym' for x-axis
