@@ -1,3 +1,4 @@
+# Importing necessary libraries
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,61 +8,65 @@ import seaborn as sns
 import re
 import numpy as np
 
+# Setting page configuration
 st.set_page_config(
     page_title="Bank Statement Analzer",
     page_icon="📊",  # Bar Chart emoji
     layout="centered",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 # Title and Introduction
 st.title("Bank Statement Analysis and Visualization")
 st.markdown("""
-**Bank Statement Analysis and Visualization**
+    <style>
+    .intro-text {
+        color: white;  /* Change this to any color you like */
+    }
+    .sidebar-title {
+        color: red;
+        font-size: 24px; /* Adjust the size to match the typical title size */
+        font-weight: bold;
+        margin: 0 0 10px 0;
+    }
+    </style>
+    
+    <div class="intro-text">
 
-Welcome to the Bank Statement Analysis and Visualization App! This intuitive tool is designed to help you effortlessly analyze and visualize your bank transactions. Whether you're tracking your spending habits, budgeting for the future, or just curious about where your money goes, our app provides the insights you need.
+    This is a Bank Statement Analysis and Visualization tool, designed to help you analyze and visualize your bank transactions. Whether you are tracking your spending habits, budgeting for the future, or just curious about how your money flows. This app provides the insights you need.
 
-**Key Features:**
-- **Date Range Selection**: Filter your transactions by custom date ranges to focus on specific periods.
-- **Amount Filtering**: Easily identify transactions above or below certain amounts to pinpoint large or small expenditures.
-- **Balance Tracking**: Monitor your account balance over time to ensure you're always aware of your financial status.
-- **Categorization**: Automatically categorize your transactions into various types like groceries, utilities, travel, and more for a clear view of your spending patterns.
-- **Entity Extraction**: Extract and analyze the names or entities from your transaction descriptions to understand who you're paying and receiving money from.
-- **Interactive Visualizations**: Enjoy dynamic and interactive charts and graphs that make understanding your financial data a breeze.
-""")
+    **Key Features:**
+    - **Date Range Selection**: Filter your transactions by custom date ranges to focus on specific periods.
+    - **Amount Filtering**: Easily identify transactions above or below certain amounts to pinpoint large or small expenditures.
+    - **Balance Tracking**: Monitor your account balance over time to ensure you're always aware of your financial status.
+    - **Categorization**: Automatically categorize your transactions into various types like groceries, utilities, travel, and more for a clear view of your spending patterns.
+    - **Entity Extraction**: Extract and analyze the names or entities from your transaction descriptions to understand who you're paying and receiving money from.
+    - **Interactive Visualizations**: Enjoy dynamic and interactive charts and graphs that make understanding your financial data a breeze.
+    </div>
+    """, unsafe_allow_html=True)
 
-# Sample data loading function with caching
-@st.cache_data
-def load_data():
-    # Replace with your actual data loading logic
-    data = pd.read_csv('merged_data.csv')
-    return data
 
-# Load data
-data = load_data()
-
+data = pd.read_csv('merged_data.csv')
+   
+# Formatting column names
 def format_column_names(column_names):
     return column_names.str.replace(' ', '_').str.replace('-', '_').str.replace('/', '_').str.replace('.', '').str.lower()
 
 data.columns = format_column_names(data.columns)
 
-# Clean and format columns
-data['transaction_date'] = data['transaction_date'].str.replace('-', '/', regex=False)
-data['value_date'] = data['value_date'].str.replace('-', '/', regex=False)
-
-# Convert dates
+# Formatting dates
 data['transaction_date'] = pd.to_datetime(data['transaction_date'], format='%d/%m/%Y')
 data['value_date'] = pd.to_datetime(data['value_date'], format='%d/%m/%Y')
 
-# Split and map transaction details
+# Splitting and mapping transaction details as boolean values
 data[['transaction_type', 'transaction_number']] = data['chq___ref_no'].str.split('-', expand=True)
 mapping = {'CR': 1, 'DR': -1}
 data['credit_debit_value'] = data['dr___cr'].map(mapping)
 
-# Adjust net balance
+# Adjusting net balance
 data['net_balance'] = data['balance'] * data['credit_debit_value']
 
-# Define categorization functions
+# Defining payment method categorization
 def categorize_payment_method(description):
     patterns = {
         'Immediate Payment Service [IMPS]': r'IMPS',
@@ -76,7 +81,7 @@ def categorize_payment_method(description):
             return method
     return 'Other'
 
-# Define categorization functions
+# Defining payment method categorization acronyms for visuals
 def categorize_payment_method_acronyms(description):
     patterns = {
         'IMPS': r'IMPS',
@@ -91,6 +96,7 @@ def categorize_payment_method_acronyms(description):
             return method
     return 'Other'
 
+# Recognizing the names from description
 def categorize_buckets(description):
     patterns = {
         'Self': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697)\b',
@@ -116,6 +122,7 @@ def categorize_buckets(description):
             return category
     return 'Other'
 
+# Recognizing the brands involved in the transactions 
 def categorize_brands(description):
     patterns = {
         'Zomato': r'\bzomato\b',
@@ -136,6 +143,7 @@ def categorize_brands(description):
             return category
     return 'Other'
 
+# Recognizing the names or entities associated with the transaction
 def categorize_names(description):
     patterns = {
         'Vyom': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697|9958121100)\b',
@@ -169,33 +177,29 @@ def categorize_names(description):
             return category
     return 'Other'
 
-# Apply categorization functions
+# Applying categorization functions
 data['payment_method'] = data['description'].apply(categorize_payment_method)
 data['payment_method_acronym'] = data['description'].apply(categorize_payment_method_acronyms)
 data['transaction_category'] = data['description'].apply(categorize_buckets)
 data['transaction_brands'] = data['description'].apply(categorize_brands)
 data['transaction_names'] = data['description'].apply(categorize_names)
 
-# Define the function to format numeric values
+# Removing the ',' values for numeric compatibility
 def format_numeric_values(numeric_values):
-    # Remove commas
     numeric_values = numeric_values.str.replace(',', '')
     return numeric_values
 
-# Apply the function to the specified columns
+# Applying the function to the relevant numeric columns
 data[['amount', 'balance', 'net_balance']] = data[['amount', 'balance', 'net_balance']].apply(format_numeric_values)
 
-# Convert the columns to numeric data types
+# Converting those columns to appropriate data types
 data[['amount', 'balance', 'net_balance']] = data[['amount', 'balance', 'net_balance']].apply(pd.to_numeric)
 
-st.sidebar.title("Report Configuration")
-
-Keyword = st.sidebar.text_input("Enter a keyword to search:")
+st.sidebar.markdown('<h1 class="sidebar-title">Report Configuration</h1>', unsafe_allow_html=True)
 
 # Date Range Slider
-
-max_start = pd.to_datetime(data['transaction_date'].min())
-max_end =pd.to_datetime(data['transaction_date'].max())
+max_start = data['transaction_date'].min()
+max_end = data['transaction_date'].max()
 
 # Calculate the number of days from the start date
 data['number_days'] = (data['transaction_date'] - max_start).dt.days + 1
@@ -216,84 +220,67 @@ slider_range_date = st.sidebar.slider(
 start_date = max_start + pd.Timedelta(days=slider_range_date[0])
 end_date = max_start + pd.Timedelta(days=slider_range_date[1])
 
-st.write(f'Selected Start Date: {start_date}')
-st.write(f'Selected End Date: {end_date}')
+st.write(f'<p style="color:blue;">Start Date: {start_date}</p>', unsafe_allow_html=True)
+st.write(f'<p style="color:blue;">End Date: {end_date}</p>', unsafe_allow_html=True)
 
+# Filter transaction data based on the selected date range
 transaction_date_data = data[(data['transaction_date'] >= start_date) & (data['transaction_date'] <= end_date)]
 
 # Amount Slider
+min_amount = 50
+max_amount = 50000
 
-min_amount = transaction_date_data['amount'].min()
-max_amount = transaction_date_data['amount'].max()
-
-# Create a slider for the date range
-slider_range_amount = st.sidebar.slider(
+# Create a single seekbar handle for the amount range
+slider_value_amount = st.sidebar.slider(
     'Amount',
     min_value=min_amount,
     max_value=max_amount,
-    value=(min_amount, max_amount)
+    value=(min_amount + max_amount) // 3  # Initial value in the middle
 )
 
-amount_filtered_data = transaction_date_data[(transaction_date_data['amount'] >= min_amount) & (transaction_date_data['amount'] <= max_amount)]
+# Filter the transaction data based on the selected amount value
+amount_filtered_data = transaction_date_data[transaction_date_data['amount'] <= slider_value_amount]
 
-# Balance Slider
+# Display filtered data (optional)
+st.write(amount_filtered_data)
 
-min_balance = amount_filtered_data['balance'].min()
-max_balance = amount_filtered_data['balance'].max()
 
-# Create a slider for the date range
-slider_range_amount = st.sidebar.slider(
+# Amount Slider
+min_balance = 500
+max_balance = 50000
+
+# Create a single seekbar handle for the amount range
+slider_value_balance = st.sidebar.slider(
     'Balance',
     min_value=min_balance,
     max_value=max_balance,
-    value=(min_balance, max_balance)
+    value=(min_balance + max_balance) // 3  # Initial value in the middle
 )
 
+# Filter the transaction data based on the selected amount value
+amount_filtered_data = transaction_date_data[transaction_date_data['amount'] <= slider_value_amount]
+
+# Display filtered data (optional)
+st.write(amount_filtered_data)
+
+# Search Box
+Keyword = st.sidebar.text_input("Please enter your query:")
+
+# Data filtered from '
 balance_filtered_data = amount_filtered_data[(amount_filtered_data['amount'] >= min_amount) & (amount_filtered_data['amount'] <= max_amount)]
 
-# Drop redundant columns
+# Dropping redundant columns
 columns_to_drop = ['chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
-
 processed_data = data.drop(columns=columns_to_drop)
-
 filtered_data = balance_filtered_data[(balance_filtered_data['balance'] >= min_balance) & (balance_filtered_data['balance'] <= max_amount)]
 
 
-fig = px.box(filtered_data, x='payment_method_acronym', y='transaction_category')
-# Customize the layout
-fig.update_layout(
-    width=966,
-    height=644,              
-    template='plotly_dark',  # Dark theme
-    #plot_bgcolor='rgba(0,0,0,1)',  # Plot background color
-    #paper_bgcolor='rgba(0,0,0,1)',  # Paper background color
-    xaxis_title='Payment Method',
-    yaxis_title='Transaction Category',
-        scene=dict(
-        yaxis=dict(
-            range=[days_index_start, days_index_end]
-        )
-    )
-)
-# Refine the grid
-fig.update_xaxes(
-    showgrid=True,  # Show gridlines on the x-axis
-    gridwidth=1,  # Width of the gridlines
-    gridcolor='black',  # Color of the gridlines
-    tickfont=dict(size=10)  # Font size of the ticks on the x-axis
-)
+fig = px.density_heatmap(filtered_data, x='transaction_date', y='balance')
 
-fig.update_yaxes(
-    showgrid=True,  # Show gridlines on the y-axis
-    gridwidth=1,  # Width of the gridlines
-    gridcolor='blue',  # Color of the gridlines
-    tickfont=dict(size=10)  # Font size of the ticks on the y-axis
-)
-
-st.plotly_chart(fig)
-
-
-fig = px.box(filtered_data, x='payment_method_acronym', y='transaction_category', )
+fig.add_trace(go.Contour(
+    x=data['transaction_date'],  # Use 'payment_method_acronym' for x-axis
+    y=data['amount']                  # Use 'amount' for y-axis
+))
 # Customize the layout
 fig.update_layout(
     width=966,
@@ -334,7 +321,7 @@ st.plotly_chart(fig)
 n_points = 1000
 x_ripple = np.random.uniform(filtered_data['balance'].min(), filtered_data['balance'].max(), n_points)
 y_ripple = np.random.uniform(filtered_data['amount'].min(), filtered_data['amount'].max(), n_points)
-z_ripple = np.random.uniform(filtered_data['number_days'].min(), filtered_data['number_days'].max(), n_points)
+z_ripple = np.random.uniform(filtered_data.index.min(), filtered_data.index.max(), n_points)
 size_ripple = np.random.uniform(5, 100, n_points)
 
 # Generate distinguishable colors for the ripple effect
@@ -353,9 +340,40 @@ fig = px.scatter_3d(
     title='Distribution of transaction values against balance over time',
     color_continuous_scale=px.colors.sequential.Jet,
     opacity=1,  # Adjust the base scatter plot transparency
-    range_color=(500, 50000),
-    labels={'transaction_date': 'Transaction Date'},  # Label for the y-axis
+    labels={'amount': 'Amount spent', 'balance': 'Remaining balance', 'index': 'Days'},  # Label for the y-axis
 )
+
+# Add the ripple effect as another 3D scatter trace
+fig.add_trace = go.Scatter3d(
+    x=x_ripple,
+    y=y_ripple,
+    z=z_ripple,
+    mode='markers',
+    marker=dict(
+        size=size_ripple,
+        color=color_ripple,
+        opacity=0.6,  # Adjust the ripple effect transparency
+        symbol='circle',  # Change the marker symbol
+        line=dict(
+            color='rgba(50, 50, 50, 0.6)',  # Outline color
+            width=1  # Outline width
+        ),
+        colorbar=dict(
+        )
+    ),
+    text=[f'Balance: {x}<br>Amount: {y}<br>Days: {z}' for x, y, z in zip(x_ripple, y_ripple, z_ripple)],  # Custom hover text
+    hoverinfo='text',
+)
+
+# Add a 3D surface plot
+#fig.add_trace(go.Surface(
+#    z=z_ripple.reshape((50, 20)),  # Reshape for surface plot
+#    x=x_ripple.reshape((50, 20)),
+#    y=y_ripple.reshape((50, 20)),
+#    colorscale='Jet',
+#    opacity=0.01
+#))
+
 
 # Customize the layout
 fig.update_layout(
@@ -364,16 +382,13 @@ fig.update_layout(
     template='plotly_dark',  # Dark theme
     #plot_bgcolor='rgba(0,0,0,1)',  # Plot background color
     #paper_bgcolor='rgba(0,0,0,1)',  # Paper background color
-    xaxis_title='Amount',
-    yaxis_title='Balance',
-        scene=dict(
+    scene=dict(
         xaxis=dict(
             range=[min_amount, max_amount]
-        ),
+            ),
         yaxis=dict(
             range=[days_index_start, days_index_end]
-        )
-    )
+            ))
 )
 
 # Refine the grid
