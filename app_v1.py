@@ -24,7 +24,7 @@ st.markdown("""
         color: white;  /* Change this to any color you like */
     }
     .sidebar-title {
-        color: red;
+        color: white;
         font-size: 24px; /* Adjust the size to match the typical title size */
         font-weight: bold;
         margin: 0 0 10px 0;
@@ -245,12 +245,12 @@ amount_filtered_data = transaction_date_data[transaction_date_data['amount'] <= 
 st.write(amount_filtered_data)
 
 
-# Amount Slider
-min_balance = 500
+# Balance Slider
+min_balance = 100
 max_balance = 50000
 
 # Create a single seekbar handle for the amount range
-slider_value_balance = st.sidebar.slider(
+slider_value_amount = st.sidebar.slider(
     'Balance',
     min_value=min_balance,
     max_value=max_balance,
