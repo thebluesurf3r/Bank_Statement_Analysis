@@ -1,19 +1,34 @@
-# Importing necessary libraries
+# Importing Streamlit for interactive web applications
 import streamlit as st
+
+# Importing Pandas for data manipulation and analysis
 import pandas as pd
+
+# Importing Matplotlib for basic plotting
 import matplotlib.pyplot as plt
+
+# Importing Plotly for interactive visualizations
 import plotly.express as px
 import plotly.graph_objs as go
+
+# Importing Seaborn for statistical data visualization
 import seaborn as sns
+
+# Importing Regular Expressions for pattern matching
 import re
+
+# Importing NumPy for numerical operations
 import numpy as np
+
+# Importing Plotly Offline mode for rendering plots in local environments
+import plotly.offline as pyo
 
 # Setting page configuration
 st.set_page_config(
-    page_title="Bank Statement Analzer",
-    page_icon="📊",  # Bar Chart emoji
-    layout="centered",
-    initial_sidebar_state="expanded",
+    page_title="Bank Statement Analyzer",  # Title of the webpage
+    page_icon="📊",  # Emoji or icon displayed in the browser tab
+    layout="centered",  # Layout of the main content (options: 'centered', 'wide')
+    initial_sidebar_state="expanded"  # State of the sidebar when the app starts (options: 'auto', 'expanded', 'collapsed')
 )
 
 # Title and Introduction
@@ -22,10 +37,11 @@ st.markdown("""
     <style>
     .intro-text {
         color: white;  /* Change this to any color you like */
+        font-size: 1.5vw; /* Responsive font size based on viewport width */
     }
     .sidebar-title {
         color: white;
-        font-size: 24px; /* Adjust the size to match the typical title size */
+        font-size: 2vw; /* Adjust the size to match the typical title size */
         font-weight: bold;
         margin: 0 0 10px 0;
     }
@@ -45,9 +61,15 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
+@st.cache_data
+def load_df():
+    file_path = 'merged_data.csv'
+    df = pd.read_csv(file_path)
+    return df
 
-data = pd.read_csv('merged_data.csv')
-   
+# Load data using the caching function
+data = load_df()
+
 # Formatting column names
 def format_column_names(column_names):
     return column_names.str.replace(' ', '_').str.replace('-', '_').str.replace('/', '_').str.replace('.', '').str.lower()
@@ -217,18 +239,23 @@ slider_range_date = st.sidebar.slider(
 )
 
 # Convert the slider range back to dates
-start_date = max_start + pd.Timedelta(days=slider_range_date[0])
-end_date = max_start + pd.Timedelta(days=slider_range_date[1])
+start_date = (max_start + pd.Timedelta(days=slider_range_date[0])).normalize()
+end_date = (max_start + pd.Timedelta(days=slider_range_date[1])).normalize()
 
-st.write(f'<p style="color:blue;">Start Date: {start_date}</p>', unsafe_allow_html=True)
-st.write(f'<p style="color:blue;">End Date: {end_date}</p>', unsafe_allow_html=True)
+# Convert start_date and end_date to strings with only the date part
+start_date_str = start_date.strftime('%Y-%m-%d')
+end_date_str = end_date.strftime('%Y-%m-%d')
+
+# Display the dates in blue
+st.markdown(f'<p style="color:blue;">Start Date: {start_date_str}</p>', unsafe_allow_html=True)
+st.markdown(f'<p style="color:blue;">End Date: {end_date_str}</p>', unsafe_allow_html=True)
 
 # Filter transaction data based on the selected date range
 transaction_date_data = data[(data['transaction_date'] >= start_date) & (data['transaction_date'] <= end_date)]
 
 # Amount Slider
 min_amount = 50
-max_amount = 50000
+max_amount = 3000
 
 # Create a single seekbar handle for the amount range
 slider_value_amount = st.sidebar.slider(
@@ -239,15 +266,11 @@ slider_value_amount = st.sidebar.slider(
 )
 
 # Filter the transaction data based on the selected amount value
-amount_filtered_data = transaction_date_data[transaction_date_data['amount'] <= slider_value_amount]
-
-# Display filtered data (optional)
-st.write(amount_filtered_data)
-
+filtered_1data = transaction_date_data[transaction_date_data['amount'] <= slider_value_amount]
 
 # Balance Slider
-min_balance = 100
-max_balance = 50000
+min_balance = 50
+max_balance = 3000
 
 # Create a single seekbar handle for the amount range
 slider_value_amount = st.sidebar.slider(
@@ -258,10 +281,7 @@ slider_value_amount = st.sidebar.slider(
 )
 
 # Filter the transaction data based on the selected amount value
-amount_filtered_data = transaction_date_data[transaction_date_data['amount'] <= slider_value_amount]
-
-# Display filtered data (optional)
-st.write(amount_filtered_data)
+amount_filtered_data = filtered_1data[filtered_1data['amount'] <= slider_value_amount]
 
 # Search Box
 Keyword = st.sidebar.text_input("Please enter your query:")
@@ -270,17 +290,39 @@ Keyword = st.sidebar.text_input("Please enter your query:")
 balance_filtered_data = amount_filtered_data[(amount_filtered_data['amount'] >= min_amount) & (amount_filtered_data['amount'] <= max_amount)]
 
 # Dropping redundant columns
-columns_to_drop = ['chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
-processed_data = data.drop(columns=columns_to_drop)
-filtered_data = balance_filtered_data[(balance_filtered_data['balance'] >= min_balance) & (balance_filtered_data['balance'] <= max_amount)]
+columns_to_preview = ['description', 'number_days', 'value_date', 'credit_debit_value','net_balance','payment_method_acronym', 'tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
+columns_to_analyze = ['tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
+
+visible_data = balance_filtered_data.drop(columns=columns_to_preview)
+processed_data = balance_filtered_data.drop(columns=columns_to_analyze)
+
+import streamlit as st
+
+@st.cache_data
+def get_preview_data(visible_data, processed_data, balance_filtered_data, min_balance, max_amount):
+    return visible_data[(processed_data['balance'] >= min_balance) & (balance_filtered_data['balance'] <= max_amount)]
 
 
-fig = px.area(filtered_data, x='transaction_date', y='balance')
+preview_data = get_preview_data(visible_data, processed_data, balance_filtered_data, min_balance, max_amount)
 
-fig.add_trace(go.Contour(
-    x=data['transaction_date'],  # Use 'payment_method_acronym' for x-axis
-    y=data['amount']                  # Use 'amount' for y-axis
-))
+
+filtered_data = processed_data[(processed_data['balance'] >= min_balance) & (balance_filtered_data['balance'] <= max_amount)]
+
+
+# Function to create gradient based on transaction_date rank
+def color_date_gradient(val):
+    color = f'background-color: rgba(5, 50, 10, {val})'
+    return color
+
+# Apply gradient based on transaction_date rank
+styled_data = visible_data.style.background_gradient(cmap='jet')
+styled_data = styled_data.apply(lambda x: x.rank(pct=True).apply(color_date_gradient), subset=['transaction_date'])
+
+# Display the DataFrame in Streamlit
+st.dataframe(styled_data)
+
+fig = px.line(filtered_data, x='transaction_date', y='balance')
+
 # Customize the layout
 fig.update_layout(
     width=966,
@@ -288,11 +330,11 @@ fig.update_layout(
     template='plotly_dark',  # Dark theme
     #plot_bgcolor='rgba(0,0,0,1)',  # Plot background color
     #paper_bgcolor='rgba(0,0,0,1)',  # Paper background color
-    xaxis_title='Payment Method',
-    yaxis_title='Transaction Category',
+    xaxis_title='Transaction Date',
+    yaxis_title='Balance',
         scene=dict(
         #xaxis=dict(
-        #    range=[min_amount, max_amount]
+        #    range=[min_balance, max_balance]
         #),
         yaxis=dict(
             range=[days_index_start, days_index_end]
@@ -318,16 +360,16 @@ fig.update_yaxes(
 st.plotly_chart(fig)
 
 # Generate data points for the ripple effect
-n_points = 1000
+n_points = 500
 x_ripple = np.random.uniform(filtered_data['balance'].min(), filtered_data['balance'].max(), n_points)
 y_ripple = np.random.uniform(filtered_data['amount'].min(), filtered_data['amount'].max(), n_points)
-z_ripple = np.random.uniform(filtered_data.index.min(), filtered_data.index.max(), n_points)
+z_ripple = np.random.uniform(filtered_data['number_days'].min(), filtered_data['number_days'].max(), n_points)
 size_ripple = np.random.uniform(5, 100, n_points)
 
 # Generate distinguishable colors for the ripple effect
 color_ripple = np.random.choice(px.colors.qualitative.Plotly, n_points)
 
-# Create the base scatter plot with adjusted date range
+# Create the base scatter plot
 fig = px.scatter_3d(
     filtered_data,
     x='balance',
@@ -339,56 +381,34 @@ fig = px.scatter_3d(
     height=644,
     title='Distribution of transaction values against balance over time',
     color_continuous_scale=px.colors.sequential.Jet,
-    opacity=1,  # Adjust the base scatter plot transparency
-    labels={'amount': 'Amount spent', 'balance': 'Remaining balance', 'index': 'Days'},  # Label for the y-axis
+    opacity=0.75,
+    labels={'amount': 'Amount spent', 'balance': 'Remaining balance', 'index': 'Days'}
 )
 
-# Add the ripple effect as another 3D scatter trace
-fig.add_trace = go.Scatter3d(
-    x=x_ripple,
-    y=y_ripple,
-    z=z_ripple,
-    mode='markers',
-    marker=dict(
-        size=size_ripple,
-        color=color_ripple,
-        opacity=0.6,  # Adjust the ripple effect transparency
-        symbol='circle',  # Change the marker symbol
-        line=dict(
-            color='rgba(50, 50, 50, 0.6)',  # Outline color
-            width=1  # Outline width
-        ),
-        colorbar=dict(
-        )
-    ),
-    text=[f'Balance: {x}<br>Amount: {y}<br>Days: {z}' for x, y, z in zip(x_ripple, y_ripple, z_ripple)],  # Custom hover text
-    hoverinfo='text',
-)
-
-# Add a 3D surface plot
-#fig.add_trace(go.Surface(
-#    z=z_ripple.reshape((50, 20)),  # Reshape for surface plot
-#    x=x_ripple.reshape((50, 20)),
-#    y=y_ripple.reshape((50, 20)),
-#    colorscale='Jet',
-#    opacity=0.01
-#))
-
+# Add a 3D surface plot (Commented out in the original code)
+# fig.add_trace(go.Surface(
+#     z=z_ripple.reshape((25, 20)),  # Reshape for surface plot
+#     x=x_ripple.reshape((25, 20)),
+#     y=y_ripple.reshape((25, 20)),
+#     opacity=0.01,
+#     showscale=False
+# ))
 
 # Customize the layout
 fig.update_layout(
-    width=966,
-    height=644,              
-    template='plotly_dark',  # Dark theme
-    #plot_bgcolor='rgba(0,0,0,1)',  # Plot background color
-    #paper_bgcolor='rgba(0,0,0,1)',  # Paper background color
+    width=644,
+    height=644,
+    template='plotly_dark',
     scene=dict(
         xaxis=dict(
-            range=[min_amount, max_amount]
+            range=[min_amount, max_amount], type='linear'
             ),
         yaxis=dict(
             range=[days_index_start, days_index_end]
-            ))
+            ),
+        #zaxis=dict(
+        #    range=[days_index_start, days_index_end]
+            )
 )
 
 # Refine the grid
@@ -406,10 +426,6 @@ fig.update_yaxes(
     tickfont=dict(size=10)  # Font size of the ticks on the y-axis
 )
 
-fig.update_traces(
-    line=dict(width=6),
-    marker=dict(size=3, symbol='circle'),
-)
 st.plotly_chart(fig)
 
 # Distribution visualizations
