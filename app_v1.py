@@ -20,8 +20,8 @@ import re
 # Importing NumPy for numerical operations
 import numpy as np
 
-# Importing Plotly Offline mode for rendering plots in local environments
-import plotly.offline as pyo
+# Importing time
+import time
 
 # Setting page configuration
 st.set_page_config(
@@ -219,6 +219,24 @@ data[['amount', 'balance', 'net_balance']] = data[['amount', 'balance', 'net_bal
 
 st.sidebar.markdown('<h1 class="sidebar-title">Report Configuration</h1>', unsafe_allow_html=True)
 
+with st.sidebar:
+    # Add a placeholder for the status message
+    status_message = st.empty()
+    status_message.text('Calculating')
+    
+    # Add a placeholder for the iteration text
+    latest_iteration = st.empty()
+    bar = st.progress(0)
+
+    for i in range(100):
+        # Update the progress bar with each iteration
+        latest_iteration.text(f' {i+1}')
+        bar.progress(i + 1)
+        time.sleep(0.01)
+
+    # Update the status message to 'Done' after the loop
+    status_message.text('Done')
+
 # Date Range Slider
 max_start = data['transaction_date'].min()
 max_end = data['transaction_date'].max()
@@ -283,11 +301,34 @@ slider_value_amount = st.sidebar.slider(
 # Filter the transaction data based on the selected amount value
 amount_filtered_data = filtered_1data[filtered_1data['amount'] <= slider_value_amount]
 
-# Search Box
-Keyword = st.sidebar.text_input("Please enter your query:")
+def search_transactions(keyword, amount_filtered_data):
+    # Convert keyword to lowercase for case-insensitive search
+    keyword = keyword.lower()
+    
+    # Filter the DataFrame based on the keyword
+    result = amount_filtered_data[
+        amount_filtered_data['transaction_names'].str.lower().str.contains(keyword) |
+        amount_filtered_data['transaction_category'].str.lower().str.contains(keyword) |
+        amount_filtered_data['payment_method'].str.lower().str.contains(keyword)
+    ]
+    return result
 
-# Data filtered from '
-balance_filtered_data = amount_filtered_data[(amount_filtered_data['amount'] >= min_amount) & (amount_filtered_data['amount'] <= max_amount)]
+# Sidebar input for the search query
+keyword = st.sidebar.text_input("Please enter your query:")
+
+# Display the search results
+if keyword:
+    results = search_transactions(keyword, amount_filtered_data)
+    if not results.empty:
+        st.write("Search Results:")
+    else:
+        st.write("No matching transactions found.")
+else:
+    st.write("Please enter a query to search for transactions.")
+
+name_filtered_data = search_transactions(keyword, amount_filtered_data)
+
+balance_filtered_data = name_filtered_data[(name_filtered_data['amount'] >= min_amount) & (name_filtered_data['amount'] <= max_amount)]
 
 # Dropping redundant columns
 columns_to_preview = ['description', 'number_days', 'value_date', 'credit_debit_value','net_balance','payment_method_acronym', 'tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
@@ -296,15 +337,12 @@ columns_to_analyze = ['tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_numbe
 visible_data = balance_filtered_data.drop(columns=columns_to_preview)
 processed_data = balance_filtered_data.drop(columns=columns_to_analyze)
 
-import streamlit as st
-
 @st.cache_data
 def get_preview_data(visible_data, processed_data, balance_filtered_data, min_balance, max_amount):
     return visible_data[(processed_data['balance'] >= min_balance) & (balance_filtered_data['balance'] <= max_amount)]
 
 
 preview_data = get_preview_data(visible_data, processed_data, balance_filtered_data, min_balance, max_amount)
-
 
 filtered_data = processed_data[(processed_data['balance'] >= min_balance) & (balance_filtered_data['balance'] <= max_amount)]
 
@@ -468,8 +506,9 @@ st.sidebar.markdown(
     """
     <style>
     .sidebar-link {
-        font-size: 20px; /* Adjust the font size as needed */
-        color: white; /* Adjust the color as needed */
+        font-size: 12px; /* Adjust the font size as needed */
+        font-family: 'Arial', sans-serif; /* Adjust the font style as needed */
+        color: #00BFFF; /* Adjust the color as needed */
         text-decoration: none;
         transition: color 0.3s, text-decoration 0.3s; /* Smooth transition */
     }
@@ -478,7 +517,7 @@ st.sidebar.markdown(
         text-decoration: underline;
     }
     </style>
-    <a class="sidebar-link" href="https://thebluesurf3r.github.io" target="_blank">My Resume</a>
+    <a class="sidebar-link" href="https://thebluesurf3r.github.io" target="_blank">You can view my resume here</a>
     """,
     unsafe_allow_html=True
 )
