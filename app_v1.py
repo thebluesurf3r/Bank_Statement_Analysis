@@ -23,8 +23,6 @@ import numpy as np
 # Importing time
 import time
 
-from streamlit_js_eval import streamlit_js_eval
-
 # Setting page configuration
 st.set_page_config(
     page_title="Bank Statement Analyzer",  # Title of the webpage
