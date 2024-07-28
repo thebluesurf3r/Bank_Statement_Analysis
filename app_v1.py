@@ -537,7 +537,7 @@ update_display_dist = lambda fig: st.plotly_chart(
         height=644, 
         xaxis_tickangle=90,
         showlegend=False,
-        coloraxis=dict(colorscale='Bluered')
+        coloraxis=dict(colorscale='Jet')
     )
     .update_xaxes(
         showgrid=False,
@@ -556,8 +556,7 @@ update_display_dist = lambda fig: st.plotly_chart(
 # Distribution Visualization 1
 distribution_count = px.bar(df, x='Bucket', y='Count', title='Transaction Category Count', 
              labels={'Bucket': 'Bucket', 'Count': 'Count'}, 
-             color='Count', 
-             color_continuous_scale='Viridis')
+             color='Count')
 
 update_display_dist(distribution_count)
 
@@ -568,8 +567,7 @@ df.columns = ['Name', 'Count']
 
 distribution_names = px.bar(df, x='Name', y='Count', title='Transaction Names Count', 
              labels={'Name': 'Name', 'Count': 'Count'}, 
-             color='Count', 
-             color_continuous_scale='Viridis')
+             color='Count')
 
 update_display_dist(distribution_names)
 
@@ -580,7 +578,8 @@ labels = {
             "transaction_category": "Transaction Category",
             "payement_method_acronym": "Payment Method"
         }
-        
+
+# Parallel categories        
 fig = px.parallel_categories(
             filtered_data,
             dimensions=['transaction_names', 'transaction_category', 'payment_method_acronym'],
