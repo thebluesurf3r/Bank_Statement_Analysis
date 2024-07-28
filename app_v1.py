@@ -23,6 +23,8 @@ import numpy as np
 # Importing time
 import time
 
+from streamlit_js_eval import streamlit_js_eval
+
 # Setting page configuration
 st.set_page_config(
     page_title="Bank Statement Analyzer",  # Title of the webpage
@@ -70,23 +72,146 @@ def load_df():
 # Load data using the caching function
 data = load_df()
 
-# Formatting column names
-def format_column_names(column_names):
-    return column_names.str.replace(' ', '_').str.replace('-', '_').str.replace('/', '_').str.replace('.', '').str.lower()
+@st.cache_data
+def process_data(df):
+    # Formatting column names
+    df.columns = df.columns.str.replace(' ', '_')\
+                           .str.replace('-', '_')\
+                           .str.replace('/', '_')\
+                           .str.replace('.', '')\
+                           .str.lower()
 
-data.columns = format_column_names(data.columns)
+    # Check and replace '/' in dates if present
+    if df['transaction_date'].str.contains('/').any():
+        df['transaction_date'] = df['transaction_date'].str.replace('/', '-')
+    if df['value_date'].str.contains('/').any():
+        df['value_date'] = df['value_date'].str.replace('/', '-')
+    
+    # Formatting dates
+    df['transaction_date'] = pd.to_datetime(df['transaction_date'], format='%d-%m-%Y')
+    df['value_date'] = pd.to_datetime(df['value_date'], format='%d-%m-%Y')
+    
+    # Splitting and mapping transaction details as boolean values
+    df[['transaction_type', 'transaction_number']] = df['chq___ref_no'].str.split('-', expand=True)
+    mapping = {'CR': 1, 'DR': -1}
+    df['credit_debit_value'] = df['dr___cr'].map(mapping)
+    
+    # Adjusting net balance
+    df['net_balance'] = df['balance'] * df['credit_debit_value']
+    
+    return df
 
-# Formatting dates
-data['transaction_date'] = pd.to_datetime(data['transaction_date'], format='%d/%m/%Y')
-data['value_date'] = pd.to_datetime(data['value_date'], format='%d/%m/%Y')
+# Apply the processing function to the data
+data = process_data(data)
 
-# Splitting and mapping transaction details as boolean values
-data[['transaction_type', 'transaction_number']] = data['chq___ref_no'].str.split('-', expand=True)
-mapping = {'CR': 1, 'DR': -1}
-data['credit_debit_value'] = data['dr___cr'].map(mapping)
+# Define the extract_name function
+def extract_name(description):
+    # Regular expression to match names enclosed by slashes
+    slash_pattern = re.compile(r'/([A-Za-z\s]+?)/')
+    # Regular expression to match names within a longer string
+    embedded_pattern = re.compile(r'([A-Za-z]+(?:\s[A-Za-z]+)+)')
+    
+    # First, try to find names enclosed by slashes
+    matches = slash_pattern.findall(description)
+    
+    if matches:
+        extracted_name = matches[0].title()
+    else:
+        # If no matches with slashes, try to find embedded names
+        matches = embedded_pattern.findall(description)
+        extracted_name = matches[0].title() if matches else 'Other'
+    
+    # Categorize the extracted name
+    categorized_name = categorize_names(extracted_name)
+    if categorized_name != 'Other':
+        return categorized_name
+    else:
+        return extracted_name
 
-# Adjusting net balance
-data['net_balance'] = data['balance'] * data['credit_debit_value']
+# Define the categorize_names function
+def categorize_names(description):
+    patterns = {
+        'Vyom': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697|9958121100)\b',
+        'Kanishq Sharma': r'\b(muzicmapass|kanishq|kanishq sharma|kan |9873683245|8433204684)\b',
+        'Kasturi Sharma': r'\b(kast |kastoorisha|kastoori|kasturi|8789816580)\b',
+        'Ajay Sharma': r'\b(ajay sharma|9833640145)\b',
+        'Deepak Vishwakarma': r'\b(deepak vi|deepak kumar vi)\b',
+        'Anandita Jangra': r'\b(ananditajangra1|anandita|anandita jangra|8979655500)\b',
+        'Dhruv Parashar': r'\b(dhruv parashar)\b',
+        'Karanveer': r'\b(karancr8999|karanveer |karanveer|971585216969|9646862136)\b',
+        'Karan Talwar': r'\b(karan talwar)\b',
+        'Pragun Magan': r'\b(pragun magan|8447783423)\b',
+        'Yawar Rashid': r'\b(yawar rashid|9956394027)\b',
+        'Hitesh Bhagat': r'\b(hit |hitesh|hitesh bhagat|hiteshbhaga|ICICX5879|8447299009)\b',
+        'Akhriebu Pucho': r'\b(akhriebu pucho|akhriebu|9582384807)\b',
+        'Bhupesh Jingar': r'\b(bhupesh jingar|darsh jing|ICICX7180)\b',
+        'Vivek Tanti': r'\b(vivek|vivek tanti|vivektanti|vivektanti5|9172603649)\b',
+        'Vishal Tanti': r'\b(vishal|vishal tanti|vishaltanti|vishal.tant|UTIBX8285|9774973923)\b',
+        'Gaurav Yadav': r'\b(1993ygaurav|Gaurav Yadav)\b',
+        'Jegendra': r'\b(jegendermn7)\b',
+        'Parth Singh': r'\b(parth singh|9910270502)\b',
+        'Cognizant': r'\b(COGNIZANT SAL|Cogniz)\b',
+        'Paytm Wallet': r'\b(@payt|add-money)\b',
+        'Zomato': r'\b(zomato|zomato-orde|zomato limited|razorpayzomato|zomato ltd|zomato online|zomato swiggy)\b',
+        'Zomato Money': r'\b(zomatomoney|@zoma)\b',
+        'Gpay': r'\b(google)\b',
+        'Payu Payment': r'\b(payu)\b',
+    }
+    for category, pattern in patterns.items():
+        if re.search(pattern, description, re.IGNORECASE):
+            return category
+    return 'Other'
+
+# Define the categorize_brands function
+def categorize_brands(description):
+    name = extract_name(description)
+    if name == 'Other':
+        patterns = {
+            'Zomato': r'\bzomato\b',
+            'Amazon': r'\bamazon\b',
+            'Rento Mojo': r'\b(rento|mojo)\b',
+            'DBHVN': r'\b(dakshin|dbhvn)\b',
+            'Bookmyshow': r'\bbookmyshow\b',
+            'Makemytrip': r'\bmakemytrip\b',
+            'Flipkart': r'\b(flipka|flipkart)\b',
+            'Swiggy': r'\bswiggy\b',
+            'Blinkit': r'\b(grofers|blinkit)\b',
+            'Airtel': r'\b(airtel|bharti|BhartiAirte)\b',
+            'Paytm': r'\bpaytm\b',
+            'GPay': r'\b(gpay|google)\b',
+        }
+        for category, pattern in patterns.items():
+            if re.search(pattern, description, re.IGNORECASE):
+                return category
+        return 'Other'
+    else:
+        return name
+
+def categorize_buckets(description):
+    name = extract_name(description)
+    patterns = {
+        'Self': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697)\b',
+        'Family': r'\b(muzicmapass|kanishq|kanishq sharma|kan |kast |kastoorisha|kastoori|kasturi|deepak vi|deepak kumar vi)\b',
+        'Friends': r'\b(ananditajangra1|anandita|vivek|vivektanti5|vishal|tanti|hites|bhaga)\b',
+        'Utilities': r'\b(bharti|airtel|paytmairtelrecharge|dakshin|dbhvn|rento|mojo|airtelin|paytm_airtelrecharge)\b',
+        'Misc': r'\b(thapa|ricky)\b',
+        'Fuel': r'\b(gas|petro|pump|station|petrol|fuel|auto|care|filling)\b',
+        'Groceries': r'\b(grofers|fast n fresh|vandanachawla|7015758745)\b',
+        'ATM Withdrawal': r'\b(atm|card)\b',
+        'Salary Credit': r'\b(rcvd|cognizant|fis)\b',
+        'Ecommerce': r'\b(amazon|flipk|kart)\b',
+        'Liquor': r'\b(liquor|wine|country)\b',
+        'Loan': r'\b(loan|SPLN|Ins Debit)\b',
+        'House Rent': r'\b(bhupesh|darsh|jing|ICICX7180|landlord)\b',
+        'Trading': r'\b(nextbillion|groww)\b',
+        'Travel': r'\b(makemy|travel|bnb|oyo)\b',
+        'Movies': r'\b(bookmy|pvr|cinepolis|cinema|movi|ny cinemas)\b',
+        'Food': r'\b(9891020216|twenty four seven|chick po|paan|dhaba|restaurant|food|food court|tea|zomato|the ducktales|vendiman)\b',
+    }
+    for category, pattern in patterns.items():
+        if re.search(pattern, name, re.IGNORECASE) or re.search(pattern, description, re.IGNORECASE):
+            return category
+    return 'Other'
 
 # Defining payment method categorization
 def categorize_payment_method(description):
@@ -118,111 +243,47 @@ def categorize_payment_method_acronyms(description):
             return method
     return 'Other'
 
-# Recognizing the names from description
-def categorize_buckets(description):
-    patterns = {
-        'Self': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697)\b',
-        'Family': r'\b(muzicmapass|kanishq|kanishq sharma|kan |kast |kastoorisha|kastoori|kasturi|deepak vi|deepak kumar vi)\b',
-        'Friends': r'\b(vivek|vishal|tanti|hites|bhaga)\b',
-        'Utilities': r'\b(bharti|airtel|dakshin|dbhvn|rento|mojo)\b',
-        'Misc': r'\b(thapa|ricky)\b',
-        'Fuel': r'\b(gas|petro|pump|station|petrol|fuel|auto|care|filling)\b',
-        'Groceries': r'\b(grofers|fast n fresh|vandanachawla|7015758745)\b',
-        'ATM Withdrawal': r'\b(atm|card)\b',
-        'Salary Credit': r'\b(rcvd|cognizant|fis)\b',
-        'Ecommerce': r'\b(amazon|flipk|kart)\b',
-        'Liquor': r'\b(liquor|wine|country)\b',
-        'Loan': r'\b(loan|SPLN|Ins Debit)\b',
-        'House Rent': r'\b(bhupesh|darsh|jing|ICICX7180|landlord)\b',
-        'Trading': r'\b(nextbillion|groww)\b',
-        'Travel': r'\b(makemy|travel|bnb|oyo)\b',
-        'Movies': r'\b(bookmy|pvr|cinepolis|cinema|movi|ny cinemas)\b',
-        'Food': r'\b(9891020216|twenty four seven|chick po|paan|dhaba|restaurant|food|food court|tea|zomato|the ducktales|vendiman)\b',
-    }
-    for category, pattern in patterns.items():
-        if re.search(pattern, description, re.IGNORECASE):
-            return category
-    return 'Other'
-
-# Recognizing the brands involved in the transactions 
-def categorize_brands(description):
-    patterns = {
-        'Zomato': r'\bzomato\b',
-        'Amazon': r'\bamazon\b',
-        'Rento Mojo': r'\b(rento|mojo)\b',
-        'DBHVN': r'\b(dakshin|dbhvn)\b',
-        'Bookmyshow': r'\bbookmyshow\b',
-        'Makemytrip': r'\bmakemytrip\b',
-        'Flipkart': r'\b(flipka|flipkart)\b',
-        'Swiggy': r'\bswiggy\b',
-        'Blinkit': r'\b(grofers|blinkit)\b',
-        'Airtel': r'\b(airtel|bharti)\b',
-        'Paytm': r'\bpaytm\b',
-        'GPay': r'\b(gpay|google)\b',
-    }
-    for category, pattern in patterns.items():
-        if re.search(pattern, description, re.IGNORECASE):
-            return category
-    return 'Other'
-
-# Recognizing the names or entities associated with the transaction
-def categorize_names(description):
-    patterns = {
-        'Vyom': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697|9958121100)\b',
-        'Kanishq Sharma': r'\b(muzicmapass|kanishq|kanishq sharma|kan |9873683245|8433204684)\b',
-        'Kasturi Sharma': r'\b(kast |kastoorisha|kastoori|kasturi|8789816580)\b',
-        'Ajay Sharma': r'\b(ajay sharma|9833640145)\b',
-        'Deepak Vishwakarma': r'\b(deepak vi|deepak kumar vi)\b',
-        'Anandita Jangra': r'\b(anandita|anandita jangra|8979655500)\b',
-        'Dhruv Parashar': r'\b(dhruv parashar)\b',
-        'Karanveer': r'\b(karancr8999|karanveer |karanveer|971585216969|9646862136)\b',
-        'Karan Talwar': r'\b(karan talwar)\b',
-        'Pragun Magan': r'\b(pragun magan|8447783423)\b',
-        'Yawar Rashid': r'\b(yawar rashid|9956394027)\b',
-        'Hitesh Bhagat': r'\b(hit |hitesh|hitesh bhagat|hiteshbhaga|ICICX5879|8447299009)\b',
-        'Akhriebu Pucho': r'\b(akhriebu pucho|akhriebu|9582384807)\b',
-        'Bhupesh Jingar': r'\b(bhupesh jingar|darsh jing|ICICX7180)\b',
-        'Vivek Tanti': r'\b(vivek|vivek tanti|vivektanti|vivektanti5|9172603649)\b',
-        'Vishal Tanti': r'\b(vishal|vishal tanti|vishaltanti|vishal.tant|UTIBX8285|9774973923)\b',
-        'Gaurav Yadav': r'\b(1993ygaurav|Gaurav Yadav)\b',
-        'Jegendra': r'\b(jegendermn7)\b',
-        'Parth Singh': r'\b(parth singh|9910270502)\b',
-        'Cognizant': r'\b(COGNIZANT SAL|Cogniz)\b',
-        'Paytm Wallet': r'\b(@payt|add-money)\b',
-        'Zomato': r'\b(zomato|zomato-orde|zomato limited|razorpayzomato|zomato ltd|zomato online|zomato swiggy)\b',
-        'Zomato Money': r'\b(zomatomoney|@zoma)\b',
-        'Gpay': r'\b(google)\b',
-        'Payu Payment': r'\b(payu)\b',
-    }
-    for category, pattern in patterns.items():
-        if re.search(pattern, description, re.IGNORECASE):
-            return category
-    return 'Other'
 
 # Applying categorization functions
+# Define the combined function
+def combined_function_name(description):
+    name = extract_name(description)
+    if name == 'Other':
+        name = categorize_names(description)
+    return name
+
+# Apply the combined function to the 'description' column
+data['transaction_names'] = data['description'].apply(combined_function_name)
 data['payment_method'] = data['description'].apply(categorize_payment_method)
 data['payment_method_acronym'] = data['description'].apply(categorize_payment_method_acronyms)
 data['transaction_category'] = data['description'].apply(categorize_buckets)
-data['transaction_brands'] = data['description'].apply(categorize_brands)
-data['transaction_names'] = data['description'].apply(categorize_names)
 
-# Removing the ',' values for numeric compatibility
-def format_numeric_values(numeric_values):
-    numeric_values = numeric_values.str.replace(',', '')
-    return numeric_values
+def format_numeric_columns(df, columns):
+    # Removing the ',' values for numeric compatibility
+    def format_numeric_values(numeric_values):
+        numeric_values = numeric_values.str.replace(',', '')
+        return numeric_values
 
-# Applying the function to the relevant numeric columns
-data[['amount', 'balance', 'net_balance']] = data[['amount', 'balance', 'net_balance']].apply(format_numeric_values)
+    # Applying the function to the relevant numeric columns
+    df[columns] = df[columns].apply(format_numeric_values)
+    
+    # Converting those columns to appropriate data types
+    df[columns] = df[columns].apply(pd.to_numeric)
+    
+    return df
 
-# Converting those columns to appropriate data types
-data[['amount', 'balance', 'net_balance']] = data[['amount', 'balance', 'net_balance']].apply(pd.to_numeric)
+# Columns to format
+numeric_columns = ['amount', 'balance', 'net_balance']
+
+# Apply the numeric formatting function to the data
+data = format_numeric_columns(data, numeric_columns)
 
 st.sidebar.markdown('<h1 class="sidebar-title">Report Configuration</h1>', unsafe_allow_html=True)
 
 with st.sidebar:
     # Add a placeholder for the status message
     status_message = st.empty()
-    status_message.text('Calculating')
+    status_message.text('Computing transactions')
     
     # Add a placeholder for the iteration text
     latest_iteration = st.empty()
@@ -230,7 +291,7 @@ with st.sidebar:
 
     for i in range(100):
         # Update the progress bar with each iteration
-        latest_iteration.text(f' {i+1}')
+        latest_iteration.text(f'{i+1}')
         bar.progress(i + 1)
         time.sleep(0.01)
 
@@ -264,38 +325,56 @@ end_date = (max_start + pd.Timedelta(days=slider_range_date[1])).normalize()
 start_date_str = start_date.strftime('%Y-%m-%d')
 end_date_str = end_date.strftime('%Y-%m-%d')
 
-# Display the dates in blue
-st.markdown(f'<p style="color:blue;">Start Date: {start_date_str}</p>', unsafe_allow_html=True)
-st.markdown(f'<p style="color:blue;">End Date: {end_date_str}</p>', unsafe_allow_html=True)
+# Create three columns
+col1, col2, col3 = st.columns([1, 1, 1])
+
+# Check if the selected dates are at their maximum values
+max_start_date = data['transaction_date'].min()
+max_end_date = data['transaction_date'].max()
+
+start_date_color = "gray" if start_date == max_start_date else "white"
+end_date_color = "gray" if end_date == max_end_date else "white"
+
+# Convert the dates to string
+start_date_str = start_date.strftime('%d-%m-%Y')
+end_date_str = end_date.strftime('%d-%m-%Y')
+
+# Display the dates in the respective columns with the determined color
+with col1:
+    st.markdown(f'<p style="color:{start_date_color}; text-align: left;">Start Date: {start_date_str}</p>', unsafe_allow_html=True)
+
+with col3:
+    st.markdown(f'<p style="color:{end_date_color}; text-align: right;">End Date: {end_date_str}</p>', unsafe_allow_html=True)
+
 
 # Filter transaction data based on the selected date range
 transaction_date_data = data[(data['transaction_date'] >= start_date) & (data['transaction_date'] <= end_date)]
 
 # Amount Slider
-min_amount = 50
-max_amount = 3000
+min_amount = 0
+max_amount = 30000
 
 # Create a single seekbar handle for the amount range
 slider_value_amount = st.sidebar.slider(
     'Amount',
     min_value=min_amount,
     max_value=max_amount,
-    value=(min_amount + max_amount) // 3  # Initial value in the middle
+    value=(min_amount + max_amount) // 2  # Initial value in the middle
 )
 
 # Filter the transaction data based on the selected amount value
 filtered_1data = transaction_date_data[transaction_date_data['amount'] <= slider_value_amount]
 
 # Balance Slider
-min_balance = 50
-max_balance = 3000
+min_balance = 0
+max_balance = 75000
 
 # Create a single seekbar handle for the amount range
 slider_value_amount = st.sidebar.slider(
     'Balance',
     min_value=min_balance,
     max_value=max_balance,
-    value=(min_balance + max_balance) // 3  # Initial value in the middle
+    value=(min_balance + max_balance) // 2  # Initial value in the middle
 )
 
 # Filter the transaction data based on the selected amount value
@@ -307,9 +386,7 @@ def search_transactions(keyword, amount_filtered_data):
     
     # Filter the DataFrame based on the keyword
     result = amount_filtered_data[
-        amount_filtered_data['transaction_names'].str.lower().str.contains(keyword) |
-        amount_filtered_data['transaction_category'].str.lower().str.contains(keyword) |
-        amount_filtered_data['payment_method'].str.lower().str.contains(keyword)
+        amount_filtered_data['description'].str.lower().str.contains(keyword)
     ]
     return result
 
@@ -319,20 +396,28 @@ keyword = st.sidebar.text_input("Please enter your query:")
 # Display the search results
 if keyword:
     results = search_transactions(keyword, amount_filtered_data)
+    num_results = len(results)  # Get the number of search results
     if not results.empty:
-        st.write("Search Results:")
+        result_text = f"Search Results: {keyword} ({num_results} results)"
+        result_color = "white"
     else:
-        st.write("No matching transactions found.")
+        result_text = "No matching transactions found."
+        result_color = "white"
 else:
-    st.write("Please enter a query to search for transactions.")
+    # Count the "Other" values in the entire 'transaction_names' column
+    unattributed_names = amount_filtered_data['transaction_names'].value_counts().get('Other', 0)
+    
+    result_text = f"Please enter a query to search for transactions. | Unattributed Names: {unattributed_names}"
+    result_color = "gray"
+
+st.markdown(f'<p style="color:{result_color};">{result_text}</p>', unsafe_allow_html=True)
 
 name_filtered_data = search_transactions(keyword, amount_filtered_data)
-
 balance_filtered_data = name_filtered_data[(name_filtered_data['amount'] >= min_amount) & (name_filtered_data['amount'] <= max_amount)]
 
 # Dropping redundant columns
-columns_to_preview = ['description', 'number_days', 'value_date', 'credit_debit_value','net_balance','payment_method_acronym', 'tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
-columns_to_analyze = ['tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
+columns_to_preview = ['number_days', 'value_date', 'credit_debit_value','net_balance','payment_method_acronym', 'tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
+columns_to_analyze = ['sl_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'transaction_type']
 
 visible_data = balance_filtered_data.drop(columns=columns_to_preview)
 processed_data = balance_filtered_data.drop(columns=columns_to_analyze)
@@ -341,130 +426,103 @@ processed_data = balance_filtered_data.drop(columns=columns_to_analyze)
 def get_preview_data(visible_data, processed_data, balance_filtered_data, min_balance, max_amount):
     return visible_data[(processed_data['balance'] >= min_balance) & (balance_filtered_data['balance'] <= max_amount)]
 
-
 preview_data = get_preview_data(visible_data, processed_data, balance_filtered_data, min_balance, max_amount)
-
 filtered_data = processed_data[(processed_data['balance'] >= min_balance) & (balance_filtered_data['balance'] <= max_amount)]
-
 
 # Function to create gradient based on transaction_date rank
 def color_date_gradient(val):
     color = f'background-color: rgba(5, 50, 10, {val})'
     return color
 
-# Apply gradient based on transaction_date rank
-styled_data = visible_data.style.background_gradient(cmap='jet')
-styled_data = styled_data.apply(lambda x: x.rank(pct=True).apply(color_date_gradient), subset=['transaction_date'])
+def apply_gradient_to_transaction_dates(dataframe):
+    def color_date_gradient(value):
+        return f'background: rgba(255, {int(255 * value)}, 0, 0.5)'
 
-# Display the DataFrame in Streamlit
+    styled_data = dataframe.style.background_gradient(cmap='turbo_r')
+    styled_data = styled_data.apply(lambda x: x.rank(pct=True).apply(color_date_gradient), subset=['transaction_date'])
+    
+    return styled_data
+
+styled_data = apply_gradient_to_transaction_dates(visible_data)
 st.dataframe(styled_data)
 
-fig = px.line(filtered_data, x='transaction_date', y='balance')
-
-# Customize the layout
-fig.update_layout(
-    width=966,
-    height=644,              
-    template='plotly_dark',  # Dark theme
-    #plot_bgcolor='rgba(0,0,0,1)',  # Plot background color
-    #paper_bgcolor='rgba(0,0,0,1)',  # Paper background color
-    xaxis_title='Transaction Date',
-    yaxis_title='Balance',
-        scene=dict(
-        #xaxis=dict(
-        #    range=[min_balance, max_balance]
-        #),
-        yaxis=dict(
-            range=[days_index_start, days_index_end]
-        )
+# Function to configure the visuals for distribution plots
+update_display_main = lambda fig: st.plotly_chart(
+    fig.update_layout(
+        width=1000,
+        height=600,
+        template='plotly_dark',
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        xaxis_tickangle=0,
+        showlegend=False,
+        coloraxis=dict(colorscale='Rainbow') #Options:
+        # Blackbody,Bluered,Blues,Cividis,Earth,Electric,
+        # Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd.
+    )
+    .update_xaxes(
+        showgrid=False,
+        gridwidth=1,
+        gridcolor='blue',
+        tickfont=dict(size=10)
+    )
+    .update_yaxes(
+        showgrid=True,
+        gridwidth=1,
+        gridcolor='blue',
+        tickfont=dict(size=10)
     )
 )
+line_graph = px.line(filtered_data, x='transaction_date', y='amount')
+update_display_main(line_graph)
 
-# Refine the grid
-fig.update_xaxes(
-    showgrid=True,  # Show gridlines on the x-axis
-    gridwidth=1,  # Width of the gridlines
-    gridcolor='black',  # Color of the gridlines
-    tickfont=dict(size=10)  # Font size of the ticks on the x-axis
-)
+# Generating ripples for visualization
+def generate_ripple_effect(filtered_data, n_points=300):
+    """
+    Generate data points for the ripple effect.
 
-fig.update_yaxes(
-    showgrid=True,  # Show gridlines on the y-axis
-    gridwidth=1,  # Width of the gridlines
-    gridcolor='blue',  # Color of the gridlines
-    tickfont=dict(size=10)  # Font size of the ticks on the y-axis
-)
+    Parameters:
+    filtered_data (DataFrame): The input data frame containing 'balance', 'amount', and 'number_days' columns.
+    n_points (int): Number of data points to generate for the ripple effect.
 
-st.plotly_chart(fig)
+    Returns:
+    tuple: Arrays for x, y, z coordinates, sizes, and colors of the ripple effect points.
+    """
+    x_ripple = np.random.uniform(filtered_data['balance'].min(), filtered_data['balance'].max(), n_points)
+    y_ripple = np.random.uniform(filtered_data['amount'].min(), filtered_data['amount'].max(), n_points)
+    z_ripple = np.random.uniform(filtered_data['number_days'].min(), filtered_data['number_days'].max(), n_points)
+    size_ripple = np.random.uniform(75, 4, n_points)
 
-# Generate data points for the ripple effect
-n_points = 500
-x_ripple = np.random.uniform(filtered_data['balance'].min(), filtered_data['balance'].max(), n_points)
-y_ripple = np.random.uniform(filtered_data['amount'].min(), filtered_data['amount'].max(), n_points)
-z_ripple = np.random.uniform(filtered_data['number_days'].min(), filtered_data['number_days'].max(), n_points)
-size_ripple = np.random.uniform(5, 100, n_points)
+    # Generate distinguishable colors for the ripple effect
+    color_ripple = np.random.choice(px.colors.qualitative.Plotly, n_points)
 
-# Generate distinguishable colors for the ripple effect
-color_ripple = np.random.choice(px.colors.qualitative.Plotly, n_points)
+    return x_ripple, y_ripple, z_ripple, size_ripple, color_ripple
+
+# Generate ripple effect data
+x_ripple, y_ripple, z_ripple, size_ripple, color_ripple = generate_ripple_effect(filtered_data)
 
 # Create the base scatter plot
-fig = px.scatter_3d(
+scatter_plot = px.scatter_3d(
     filtered_data,
     x='balance',
     y='amount',
     z=filtered_data.index,
-    color='balance',
+    color='amount',
     size='amount',
-    width=966,
-    height=644,
     title='Distribution of transaction values against balance over time',
-    color_continuous_scale=px.colors.sequential.Jet,
-    opacity=0.75,
+    opacity=1,
     labels={'amount': 'Amount spent', 'balance': 'Remaining balance', 'index': 'Days'}
 )
 
 # Add a 3D surface plot (Commented out in the original code)
-# fig.add_trace(go.Surface(
-#     z=z_ripple.reshape((25, 20)),  # Reshape for surface plot
-#     x=x_ripple.reshape((25, 20)),
-#     y=y_ripple.reshape((25, 20)),
-#     opacity=0.01,
-#     showscale=False
-# ))
-
-# Customize the layout
-fig.update_layout(
-    width=644,
-    height=644,
-    template='plotly_dark',
-    scene=dict(
-        xaxis=dict(
-            range=[min_amount, max_amount], type='linear'
-            ),
-        yaxis=dict(
-            range=[days_index_start, days_index_end]
-            ),
-        #zaxis=dict(
-        #    range=[days_index_start, days_index_end]
-            )
-)
-
-# Refine the grid
-fig.update_xaxes(
-    showgrid=True,  # Show gridlines on the x-axis
-    gridwidth=1,  # Width of the gridlines
-    gridcolor='black',  # Color of the gridlines
-    tickfont=dict(size=10)  # Font size of the ticks on the x-axis
-)
-
-fig.update_yaxes(
-    showgrid=True,  # Show gridlines on the y-axis
-    gridwidth=1,  # Width of the gridlines
-    gridcolor='blue',  # Color of the gridlines
-    tickfont=dict(size=10)  # Font size of the ticks on the y-axis
-)
-
-st.plotly_chart(fig)
+scatter_plot.add_trace(go.Surface(
+     z=z_ripple.reshape((75, 4)),  # Reshape for surface plot
+     x=x_ripple.reshape((75, 4)),
+     y=y_ripple.reshape((75, 4)),
+     opacity=0.01,
+     showscale=False
+ ))
+update_display_main(scatter_plot)
 
 # Distribution visualizations
 st.header("Distribution Visualizations")
@@ -472,35 +530,82 @@ bucket_counts = filtered_data['transaction_category'].value_counts()
 brand_counts = filtered_data['transaction_brands'].value_counts()
 name_counts = filtered_data['transaction_names'].value_counts()
 
-# Transaction buckets count
-plt.figure(figsize=(10, 5))
-sns.barplot(x=bucket_counts.index, y=bucket_counts.values, palette='viridis')
-plt.title('Transaction Category Count')
-plt.xlabel('Bucket')
-plt.ylabel('Count')
-plt.xticks(rotation=45)
-plt.grid(True)
-st.pyplot(plt)
+df = bucket_counts.reset_index()
+df.columns = ['Bucket', 'Count']
 
-# Transaction brands count
-plt.figure(figsize=(10, 5))
-sns.barplot(x=brand_counts.index, y=brand_counts.values, palette='viridis')
-plt.title('Transaction Brands Count')
-plt.xlabel('Brand')
-plt.ylabel('Count')
-plt.xticks(rotation=45)
-plt.grid(True)
-st.pyplot(plt)
+# Function to configure the visuals for distribution plots
+update_display_dist = lambda fig: st.plotly_chart(
+    fig.update_layout(
+        width=966,
+        height=644, 
+        xaxis_tickangle=90,
+        showlegend=False,
+        coloraxis=dict(colorscale='Bluered')
+    )
+    .update_xaxes(
+        showgrid=False,
+        gridwidth=1,
+        gridcolor='blue',
+        tickfont=dict(size=10)
+    )
+    .update_yaxes(
+        showgrid=True,
+        gridwidth=1,
+        gridcolor='blue',
+        tickfont=dict(size=10)
+    )
+)
 
-# Transaction names count
-plt.figure(figsize=(10, 5))
-sns.barplot(x=name_counts.index, y=name_counts.values, palette='viridis')
-plt.title('Transaction Names Count')
-plt.xlabel('Name')
-plt.ylabel('Count')
-plt.xticks(rotation=45)
-plt.grid(True)
-st.pyplot(plt)
+# Distribution Visualization 1
+
+distribution_count = px.bar(df, x='Bucket', y='Count', title='Transaction Category Count', 
+             labels={'Bucket': 'Bucket', 'Count': 'Count'}, 
+             color='Count', 
+             color_continuous_scale='Viridis')
+
+update_display_dist(distribution_count)
+
+# Distribution Visualization 2
+
+df = brand_counts.reset_index()
+df.columns = ['Brand', 'Count']
+
+distribution_brand = px.bar(df, x='Brand', y='Count', title='Transaction Brands Count', 
+             labels={'Brand': 'Brand', 'Count': 'Count'}, 
+             color='Count', 
+             color_continuous_scale='Viridis')
+
+update_display_dist(distribution_brand)
+
+# Distribution Visualization 3
+
+df = name_counts.reset_index()
+df.columns = ['Name', 'Count']
+
+distribution_names = px.bar(df, x='Name', y='Count', title='Transaction Names Count', 
+             labels={'Name': 'Name', 'Count': 'Count'}, 
+             color='Count', 
+             color_continuous_scale='Viridis')
+
+update_display_dist(distribution_names)
+
+# Function to convert DataFrame to CSV
+def convert_df_to_csv(df):
+    return df.to_csv(index=False).encode('utf-8')
+
+# Main part of the app
+st.write("Here is the preview of the original data")
+
+# Add a download button at the bottom of the page
+csv = convert_df_to_csv(filtered_data)
+
+st.download_button(
+    label="Download data as CSV",
+    data=csv,
+    file_name='filtered_data.csv',
+    mime='text/csv',
+)
+
 
 st.sidebar.markdown(
     """
