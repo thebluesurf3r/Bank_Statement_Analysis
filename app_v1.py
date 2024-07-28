@@ -195,7 +195,7 @@ def categorize_buckets(description):
         'Utilities': r'\b(bharti|airtel|paytmairtelrecharge|dakshin|dbhvn|rento|mojo|airtelin|paytm_airtelrecharge)\b',
         'Misc': r'\b(thapa|ricky)\b',
         'Fuel': r'\b(gas|petro|pump|station|petrol|fuel|auto|care|filling)\b',
-        'Groceries': r'\b(grofers|fast n fresh|vandanachawla|7015758745)\b',
+        'Groceries': r'\b(grofers|fast n fresh|sandeep|vandanachawla|7015758745)\b',
         'ATM Withdrawal': r'\b(atm|card)\b',
         'Salary Credit': r'\b(rcvd|cognizant|fis)\b',
         'Ecommerce': r'\b(amazon|flipk|kart)\b',
@@ -354,7 +354,7 @@ transaction_date_data = data[(data['transaction_date'] >= start_date) & (data['t
 
 # Amount Slider
 min_amount = 0
-max_amount = 30000
+max_amount = 50000
 
 # Create a single seekbar handle for the amount range
 slider_value_amount = st.sidebar.slider(
@@ -572,6 +572,22 @@ distribution_names = px.bar(df, x='Name', y='Count', title='Transaction Names Co
              color_continuous_scale='Viridis')
 
 update_display_dist(distribution_names)
+
+ # Create and display the parallel categories plot with labels
+labels = {
+            "transaction_date": "Transaction Date",
+            "transaction_names": "Transaction Names",
+            "transaction_category": "Transaction Category",
+            "payement_method_acronym": "Payment Method"
+        }
+        
+fig = px.parallel_categories(
+            filtered_data,
+            dimensions=['transaction_names', 'transaction_category', 'payment_method_acronym'],
+            labels=labels,
+            title='Parallel categories plot between transaction date, transaction category and payment method'
+        )
+update_display_main(fig)
 
 # Function to convert DataFrame to CSV
 def convert_df_to_csv(df):
