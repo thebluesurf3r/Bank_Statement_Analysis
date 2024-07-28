@@ -104,6 +104,8 @@ def process_data(df):
 # Apply the processing function to the data
 data = process_data(data)
 
+import re
+
 # Define the extract_name function
 def extract_name(description):
     # Regular expression to match names enclosed by slashes
@@ -131,7 +133,7 @@ def extract_name(description):
 # Define the categorize_names function
 def categorize_names(description):
     patterns = {
-        'Vyom': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697|9958121100)\b',
+        'Vyom': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697|9958121100|fd booked|rd booked|vyomdeepansh-1@)\b',
         'Kanishq Sharma': r'\b(muzicmapass|kanishq|kanishq sharma|kan |9873683245|8433204684)\b',
         'Kasturi Sharma': r'\b(kast |kastoorisha|kastoori|kasturi|8789816580)\b',
         'Ajay Sharma': r'\b(ajay sharma|9833640145)\b',
@@ -151,11 +153,7 @@ def categorize_names(description):
         'Jegendra': r'\b(jegendermn7)\b',
         'Parth Singh': r'\b(parth singh|9910270502)\b',
         'Cognizant': r'\b(COGNIZANT SAL|Cogniz)\b',
-        'Paytm Wallet': r'\b(@payt|add-money)\b',
-        'Zomato': r'\b(zomato|zomato-orde|zomato limited|razorpayzomato|zomato ltd|zomato online|zomato swiggy)\b',
-        'Zomato Money': r'\b(zomatomoney|@zoma)\b',
-        'Gpay': r'\b(google)\b',
-        'Payu Payment': r'\b(payu)\b',
+        'Paytm Wallet': r'\b(@payt|add-money)\b'
     }
     for category, pattern in patterns.items():
         if re.search(pattern, description, re.IGNORECASE):
@@ -179,6 +177,7 @@ def categorize_brands(description):
             'Airtel': r'\b(airtel|bharti|BhartiAirte)\b',
             'Paytm': r'\bpaytm\b',
             'GPay': r'\b(gpay|google)\b',
+            'Aditya Birla': r'\b(aditya birla fa)\b'
         }
         for category, pattern in patterns.items():
             if re.search(pattern, description, re.IGNORECASE):
@@ -190,7 +189,7 @@ def categorize_brands(description):
 def categorize_buckets(description):
     name = extract_name(description)
     patterns = {
-        'Self': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697)\b',
+        'Self': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697|fd booked|rd booked)\b',
         'Family': r'\b(muzicmapass|kanishq|kanishq sharma|kan |kast |kastoorisha|kastoori|kasturi|deepak vi|deepak kumar vi)\b',
         'Friends': r'\b(ananditajangra1|anandita|vivek|vivektanti5|vishal|tanti|hites|bhaga)\b',
         'Utilities': r'\b(bharti|airtel|paytmairtelrecharge|dakshin|dbhvn|rento|mojo|airtelin|paytm_airtelrecharge)\b',
@@ -211,7 +210,10 @@ def categorize_buckets(description):
     for category, pattern in patterns.items():
         if re.search(pattern, name, re.IGNORECASE) or re.search(pattern, description, re.IGNORECASE):
             return category
-    return 'Other'
+    
+    # If no match is found, categorize using categorize_brands
+    return categorize_brands(description)
+
 
 # Defining payment method categorization
 def categorize_payment_method(description):
@@ -386,7 +388,10 @@ def search_transactions(keyword, amount_filtered_data):
     
     # Filter the DataFrame based on the keyword
     result = amount_filtered_data[
-        amount_filtered_data['description'].str.lower().str.contains(keyword)
+        amount_filtered_data['description'].str.lower().str.contains(keyword) |
+        amount_filtered_data['transaction_names'].str.lower().str.contains(keyword) |
+        amount_filtered_data['transaction_category'].str.lower().str.contains(keyword)
+
     ]
     return result
 
@@ -456,7 +461,7 @@ update_display_main = lambda fig: st.plotly_chart(
         paper_bgcolor='rgba(0,0,0,0)',
         xaxis_tickangle=0,
         showlegend=False,
-        coloraxis=dict(colorscale='Rainbow') #Options:
+        coloraxis=dict(colorscale='Jet') #Options:
         # Blackbody,Bluered,Blues,Cividis,Earth,Electric,
         # Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd.
     )
@@ -478,19 +483,12 @@ update_display_main(line_graph)
 
 # Generating ripples for visualization
 def generate_ripple_effect(filtered_data, n_points=300):
-    """
-    Generate data points for the ripple effect.
 
-    Parameters:
-    filtered_data (DataFrame): The input data frame containing 'balance', 'amount', and 'number_days' columns.
-    n_points (int): Number of data points to generate for the ripple effect.
+    transaction_count = filtered_data['transaction_names'].nunique()
 
-    Returns:
-    tuple: Arrays for x, y, z coordinates, sizes, and colors of the ripple effect points.
-    """
     x_ripple = np.random.uniform(filtered_data['balance'].min(), filtered_data['balance'].max(), n_points)
     y_ripple = np.random.uniform(filtered_data['amount'].min(), filtered_data['amount'].max(), n_points)
-    z_ripple = np.random.uniform(filtered_data['number_days'].min(), filtered_data['number_days'].max(), n_points)
+    z_ripple = np.random.uniform(0, transaction_count, n_points)
     size_ripple = np.random.uniform(75, 4, n_points)
 
     # Generate distinguishable colors for the ripple effect
@@ -507,7 +505,7 @@ scatter_plot = px.scatter_3d(
     x='balance',
     y='amount',
     z=filtered_data.index,
-    color='amount',
+    color='balance',
     size='amount',
     title='Distribution of transaction values against balance over time',
     opacity=1,
@@ -527,7 +525,6 @@ update_display_main(scatter_plot)
 # Distribution visualizations
 st.header("Distribution Visualizations")
 bucket_counts = filtered_data['transaction_category'].value_counts()
-brand_counts = filtered_data['transaction_brands'].value_counts()
 name_counts = filtered_data['transaction_names'].value_counts()
 
 df = bucket_counts.reset_index()
@@ -557,25 +554,12 @@ update_display_dist = lambda fig: st.plotly_chart(
 )
 
 # Distribution Visualization 1
-
 distribution_count = px.bar(df, x='Bucket', y='Count', title='Transaction Category Count', 
              labels={'Bucket': 'Bucket', 'Count': 'Count'}, 
              color='Count', 
              color_continuous_scale='Viridis')
 
 update_display_dist(distribution_count)
-
-# Distribution Visualization 2
-
-df = brand_counts.reset_index()
-df.columns = ['Brand', 'Count']
-
-distribution_brand = px.bar(df, x='Brand', y='Count', title='Transaction Brands Count', 
-             labels={'Brand': 'Brand', 'Count': 'Count'}, 
-             color='Count', 
-             color_continuous_scale='Viridis')
-
-update_display_dist(distribution_brand)
 
 # Distribution Visualization 3
 
