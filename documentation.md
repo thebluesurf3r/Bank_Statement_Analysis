@@ -29,14 +29,14 @@ The **Bank Statement Analysis and Visualization Tool** helps you understand your
 - **`credit_debit_value`**: Whether a transaction is a credit or debit.
 - **`transaction_count`**: The number of transactions.
 
-## Data Analysis Technique
+## Data Analysis
 
 The tool uses **Pandas** and **Numpy** for analyzing your data:
 
 - **Pandas**: Handles data cleaning, aggregation (like total spending per category), and time series analysis.
 - **Numpy**: Performs numerical calculations and statistical analysis (such as mean and median).
 
-## Data Visualization Techniques
+## Data Visualization
 
 Visualizations are created with **Plotly**, including:
 
