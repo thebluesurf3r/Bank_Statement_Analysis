@@ -33,33 +33,22 @@ st.set_page_config(
 
 # Title and Introduction
 st.title("Bank Statement Analysis and Visualization")
-st.markdown("""
-    <style>
-    .intro-text {
-        color: white;  /* Change this to any color you like */
-        font-size: 1.5vw; /* Responsive font size based on viewport width */
-    }
-    .sidebar-title {
-        color: white;
-        font-size: 2vw; /* Adjust the size to match the typical title size */
-        font-weight: bold;
-        margin: 0 0 10px 0;
-    }
-    </style>
-    
-    <div class="intro-text">
 
-    This is a Bank Statement Analysis and Visualization tool, designed to help you analyze and visualize your bank transactions. Whether you are tracking your spending habits, budgeting for the future, or just curious about how your money flows. This app provides the insights you need.
 
-    **Key Features:**
-    - **Date Range Selection**: Filter your transactions by custom date ranges to focus on specific periods.
-    - **Amount Filtering**: Easily identify transactions above or below certain amounts to pinpoint large or small expenditures.
-    - **Balance Tracking**: Monitor your account balance over time to ensure you're always aware of your financial status.
-    - **Categorization**: Automatically categorize your transactions into various types like groceries, utilities, travel, and more for a clear view of your spending patterns.
-    - **Entity Extraction**: Extract and analyze the names or entities from your transaction descriptions to understand who you're paying and receiving money from.
-    - **Interactive Visualizations**: Enjoy dynamic and interactive charts and graphs that make understanding your financial data a breeze.
-    </div>
-    """, unsafe_allow_html=True)
+# Initialize session state for documentation toggle if not already set
+if 'show_documentation' not in st.session_state:
+    st.session_state.show_documentation = False
+
+# Add the "Documentation" link to the sidebar
+with st.sidebar:
+    st.caption('Please go through the documentation here')
+    if st.button('Documentation'):
+        st.session_state.show_documentation = not st.session_state.show_documentation
+    st.caption('---')
+if st.session_state.show_documentation:
+    # Display documentation
+    with open('documentation.md', 'r') as f:
+        st.caption(f.read())
 
 @st.cache_data
 def load_df():
@@ -283,7 +272,7 @@ st.sidebar.markdown('<h1 class="sidebar-title">Report Configuration</h1>', unsaf
 with st.sidebar:
     # Add a placeholder for the status message
     status_message = st.empty()
-    status_message.text('Computing transactions')
+    status_message.caption('Computing transactions...')
     
     # Add a placeholder for the iteration text
     latest_iteration = st.empty()
@@ -291,12 +280,12 @@ with st.sidebar:
 
     for i in range(100):
         # Update the progress bar with each iteration
-        latest_iteration.text(f'{i+1}')
+        latest_iteration.text(f'{i+1} %')
         bar.progress(i + 1)
         time.sleep(0.01)
 
     # Update the status message to 'Done' after the loop
-    status_message.text('Done')
+    status_message.caption('Computation complete')
 
 # Date Range Slider
 max_start = data['transaction_date'].min()
@@ -339,12 +328,14 @@ end_date_color = "gray" if end_date == max_end_date else "white"
 start_date_str = start_date.strftime('%d-%m-%Y')
 end_date_str = end_date.strftime('%d-%m-%Y')
 
-# Display the dates in the respective columns with the determined color
+# Create columns
+col1, col2, col3 = st.columns([1, 1, 1])
+
 with col1:
-    st.markdown(f'<p style="color:{start_date_color}; text-align: left;">Start Date: {start_date_str}</p>', unsafe_allow_html=True)
+    st.markdown(f'<p style="color:{start_date_color}; text-align: left;" title="The start date of the selected period">Start Date: {start_date_str}</p>', unsafe_allow_html=True)
 
 with col3:
-    st.markdown(f'<p style="color:{end_date_color}; text-align: right;">End Date: {end_date_str}</p>', unsafe_allow_html=True)
+    st.markdown(f'<p style="color:{end_date_color}; text-align: right;" title="The end date of the selected period">End Date: {end_date_str}</p>', unsafe_allow_html=True)
 
 
 # Filter transaction data based on the selected date range
@@ -410,7 +401,7 @@ else:
     # Count the "Other" values in the entire 'transaction_names' column
     unattributed_names = amount_filtered_data['transaction_names'].value_counts().get('Other', 0)
     
-    result_text = f"Please enter a query to search for transactions. | Unattributed Names: {unattributed_names}"
+    result_text = f"Please enter a query to search for transactions | There are {unattributed_names} unattributed names"
     result_color = "gray"
 
 st.markdown(f'<p style="color:{result_color};">{result_text}</p>', unsafe_allow_html=True)
@@ -602,7 +593,6 @@ st.download_button(
     file_name='filtered_data.csv',
     mime='text/csv',
 )
-
 
 st.sidebar.markdown(
     """
