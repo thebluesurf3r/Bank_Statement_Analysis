@@ -437,6 +437,8 @@ def apply_gradient_to_transaction_dates(dataframe):
     return styled_data
 
 styled_data = apply_gradient_to_transaction_dates(visible_data)
+
+# Display the styled dataframe
 st.dataframe(styled_data)
 
 # Function to configure the visuals for distribution plots
