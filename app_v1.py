@@ -34,21 +34,21 @@ st.set_page_config(
 # Title and Introduction
 st.title("Bank Statement Analysis and Visualization")
 
-
 # Initialize session state for documentation toggle if not already set
 if 'show_documentation' not in st.session_state:
-    st.session_state.show_documentation = False
+    st.session_state.show_documentation = True
 
 # Add the "Documentation" link to the sidebar
 with st.sidebar:
-    st.caption('Please go through the documentation here')
+    st.markdown('<p style="font-size: 16px;"></p>', unsafe_allow_html=True)
     if st.button('Documentation'):
         st.session_state.show_documentation = not st.session_state.show_documentation
-    st.caption('---')
+    st.markdown('<hr>', unsafe_allow_html=True)
+
+# Toggle the display of the documentation
 if st.session_state.show_documentation:
-    # Display documentation
     with open('documentation.md', 'r') as f:
-        st.caption(f.read())
+        st.markdown(f'<div style="padding: 30px; background-color: black; border-radius: 10px;">{f.read()}</div>', unsafe_allow_html=True)
 
 @st.cache_data
 def load_df():
@@ -336,7 +336,6 @@ with col1:
 
 with col3:
     st.markdown(f'<p style="color:{end_date_color}; text-align: right;" title="The end date of the selected period">End Date: {end_date_str}</p>', unsafe_allow_html=True)
-
 
 # Filter transaction data based on the selected date range
 transaction_date_data = data[(data['transaction_date'] >= start_date) & (data['transaction_date'] <= end_date)]
