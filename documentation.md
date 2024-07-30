@@ -45,4 +45,4 @@ Visualizations are created with **Plotly**, including:
 - **Transaction Category**: Visualizes spending by category.
 - **Scatter 3D**: Maps `transaction_count`, `amount`, and `balance`. It helps visualize the relationship between the number of transactions, their amounts, and the balance over time, providing insights into transaction frequency, spending patterns, and how they affect the balance.
 - **Parallel Categories**: To connect `transaction_category`, `transaction_names`, and `transaction_date`. It shows how different categories and names relate to transaction dates, helping you understand the distribution of transactions across categories and time periods.
-- **Cross Filtering**: All visualizations are cross-filtered, allowing you to interact with data across different charts for a cohesive analysis experience.
+- **Cross-Filtering**: All visualizations are cross-filtered, allowing you to interact with data across different charts for a cohesive analysis experience.
