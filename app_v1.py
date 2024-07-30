@@ -78,9 +78,6 @@ if st.session_state.show_documentation:
         unsafe_allow_html=True
     )
 
-# Content that will be styled
-st.markdown('<div id="documentation"></div>', unsafe_allow_html=True)
-
 @st.cache_data
 def load_df():
     file_path = 'merged_data.csv'
