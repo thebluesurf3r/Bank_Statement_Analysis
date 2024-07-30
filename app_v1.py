@@ -75,11 +75,11 @@ if st.session_state.show_documentation:
             {doc_content}
         </div>
         ''',
-        unsafe_allow_html=False
+        unsafe_allow_html=True
     )
 
 # Content that will be styled
-st.markdown('<div id="documentation">Your content here</div>', unsafe_allow_html=True)
+st.markdown('<div id="documentation">Your content here</div>', unsafe_allow_html=False)
 
 @st.cache_data
 def load_df():
