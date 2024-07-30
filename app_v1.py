@@ -519,7 +519,7 @@ update_display_main = lambda fig: st.plotly_chart(
         paper_bgcolor='rgba(0,0,0,0)',
         xaxis_tickangle=0,
         showlegend=False,
-        coloraxis=dict(colorscale='Greys') #Options:
+        coloraxis=dict(colorscale='Jet') #Options:
         # Blackbody,Bluered,Blues,Cividis,Earth,Electric,
         # Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd.
     )
@@ -595,7 +595,7 @@ update_display_dist = lambda fig: st.plotly_chart(
         height=644, 
         xaxis_tickangle=90,
         showlegend=False,
-        coloraxis=dict(colorscale='Jet')
+        coloraxis=dict(colorscale='BlackBody')
     )
     .update_xaxes(
         showgrid=False,
