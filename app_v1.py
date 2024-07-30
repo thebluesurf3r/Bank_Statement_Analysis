@@ -50,7 +50,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # Display the title with custom styles
-st.markdown('<div class="title-container"><div class="title-text">Financial Transaction Explorer</div></div>', unsafe_allow_html=True)
+st.markdown('<div class="title-container"><div class="title-text">Financial Transaction Explorer</div>', unsafe_allow_html=True)
 
 
 # Initialize session state for documentation toggle if not already set
