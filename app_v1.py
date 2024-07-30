@@ -32,7 +32,26 @@ st.set_page_config(
 )
 
 # Title and Introduction
-st.title("Bank Statement Analysis and Visualization")
+# Apply custom CSS for padding and border radius
+st.markdown("""
+    <style>
+    .title-container {
+        padding: 10px;
+        background-color: black;
+        border-radius: 10px;
+        text-align: center;
+    }
+    .title-text {
+        font-size: 2em;
+        font-weight: bold;
+        color: white;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Display the title with custom styles
+st.markdown('<div class="title-container"><div class="title-text">Financial Transaction Explorer</div></div>', unsafe_allow_html=True)
+
 
 # Initialize session state for documentation toggle if not already set
 if 'show_documentation' not in st.session_state:
@@ -48,7 +67,31 @@ with st.sidebar:
 # Toggle the display of the documentation
 if st.session_state.show_documentation:
     with open('documentation.md', 'r') as f:
-        st.markdown(f'<div style="padding: 30px; background-color: black; border-radius: 10px;">{f.read()}</div>', unsafe_allow_html=True)
+        doc_content = f.read()
+
+    st.markdown(
+        f'''
+        <div id="documentation" style="padding: 30px; background-color: black; border-radius: 10px;">
+            {doc_content}
+        </div>
+        <style>
+            #documentation {{
+                animation: slideDown 0.5s ease-in-out;
+            }}
+            @keyframes slideDown {{
+                from {{
+                    max-height: 0;
+                    opacity: 0;
+                }}
+                to {{
+                    max-height: 500px; /* Adjust as needed */
+                    opacity: 1;
+                }}
+            }}
+        </style>
+        ''',
+        unsafe_allow_html=True
+    )
 
 @st.cache_data
 def load_df():
@@ -247,25 +290,22 @@ data['payment_method'] = data['description'].apply(categorize_payment_method)
 data['payment_method_acronym'] = data['description'].apply(categorize_payment_method_acronyms)
 data['transaction_category'] = data['description'].apply(categorize_buckets)
 
-def format_numeric_columns(df, columns):
-    # Removing the ',' values for numeric compatibility
+def format_numeric_columns(data, columns):
+    # Function to remove commas and convert to integer
     def format_numeric_values(numeric_values):
         numeric_values = numeric_values.str.replace(',', '')
         return numeric_values
 
     # Applying the function to the relevant numeric columns
-    df[columns] = df[columns].apply(format_numeric_values)
+    data[columns] = data[columns].apply(format_numeric_values)
     
-    # Converting those columns to appropriate data types
-    df[columns] = df[columns].apply(pd.to_numeric)
+    # Converting those columns to appropriate data types (integer)
+    data[columns] = data[columns].apply(lambda x: pd.to_numeric(x).astype(int))
     
-    return df
+    return data
 
-# Columns to format
-numeric_columns = ['amount', 'balance', 'net_balance']
-
-# Apply the numeric formatting function to the data
-data = format_numeric_columns(data, numeric_columns)
+# Example usage:
+data = format_numeric_columns(data, ['amount', 'balance'])
 
 st.sidebar.markdown('<h1 class="sidebar-title">Report Configuration</h1>', unsafe_allow_html=True)
 
@@ -280,7 +320,7 @@ with st.sidebar:
 
     for i in range(100):
         # Update the progress bar with each iteration
-        latest_iteration.text(f'{i+1} %')
+        latest_iteration.text(f'{i+1}%')
         bar.progress(i + 1)
         time.sleep(0.01)
 
@@ -409,8 +449,8 @@ name_filtered_data = search_transactions(keyword, amount_filtered_data)
 balance_filtered_data = name_filtered_data[(name_filtered_data['amount'] >= min_amount) & (name_filtered_data['amount'] <= max_amount)]
 
 # Dropping redundant columns
-columns_to_preview = ['number_days', 'value_date', 'credit_debit_value','net_balance','payment_method_acronym', 'tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
-columns_to_analyze = ['sl_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'transaction_type']
+columns_to_preview = ['number_days', 'value_date','net_balance','payment_method_acronym', 'tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
+columns_to_analyze = ['sl_no', 'transaction_number', 'dr___cr1', 'transaction_type']
 
 visible_data = balance_filtered_data.drop(columns=columns_to_preview)
 processed_data = balance_filtered_data.drop(columns=columns_to_analyze)
@@ -427,18 +467,46 @@ def color_date_gradient(val):
     color = f'background-color: rgba(5, 50, 10, {val})'
     return color
 
-def apply_gradient_to_transaction_dates(dataframe):
-    def color_date_gradient(value):
-        return f'background: rgba(255, {int(255 * value)}, 0, 0.5)'
+#def apply_gradient_to_transaction_dates(dataframe):
+#    def color_date_gradient(value):
+#        return f'background: rgba(255, {int(255 * value)}, 0, 0.5)'
+#
+#    styled_data = dataframe.style.background_gradient(cmap='turbo_r')
+#    styled_data = styled_data.apply(lambda x: x.rank(pct=True).apply(color_date_gradient), subset=['transaction_date'])
+#    
+#    return styled_data
+#
+#styled_data = apply_gradient_to_transaction_dates(visible_data)
 
-    styled_data = dataframe.style.background_gradient(cmap='turbo_r')
-    styled_data = styled_data.apply(lambda x: x.rank(pct=True).apply(color_date_gradient), subset=['transaction_date'])
+# Function to apply color coding based on 'credit_debit_value'
+def color_based_on_credit_debit(val, color_map):
+    return f'color: {color_map.get(val, "")}'
+
+# Define a function to color the 'amount' column based on the 'credit_debit_value'
+def color_credit_debit_amount(df):
+    # Create a color map based on 'credit_debit_value' column
+    color_map = {1: 'blue', -1: 'red'}
     
-    return styled_data
+    # Apply color to 'credit_debit_value' column
+    credit_debit_styles = df['credit_debit_value'].map(lambda x: color_based_on_credit_debit(x, color_map))
+    
+    # Apply color to 'amount' column based on 'credit_debit_value' column
+    amount_styles = df['credit_debit_value'].map(lambda x: color_based_on_credit_debit(x, color_map))
+    
+    return credit_debit_styles, amount_styles
 
-styled_data = apply_gradient_to_transaction_dates(visible_data)
+# Get the styles
+credit_debit_styles, amount_styles = color_credit_debit_amount(visible_data)
 
-# Display the styled dataframe
+# Create a copy of the DataFrame without the columns to be hidden
+visible_data_styled = visible_data.copy()
+
+# Apply the styles
+styled_data = (visible_data_styled.style
+                .apply(lambda x: credit_debit_styles, subset=['credit_debit_value'])
+                .apply(lambda x: amount_styles, subset=['amount']))
+
+# Display the styled DataFrame
 st.dataframe(styled_data)
 
 # Function to configure the visuals for distribution plots
