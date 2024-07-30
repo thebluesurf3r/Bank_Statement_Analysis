@@ -519,7 +519,7 @@ update_display_main = lambda fig: st.plotly_chart(
         paper_bgcolor='rgba(0,0,0,0)',
         xaxis_tickangle=0,
         showlegend=False,
-        coloraxis=dict(colorscale='BlackBody') #Options:
+        coloraxis=dict(colorscale='Greys') #Options:
         # Blackbody,Bluered,Blues,Cividis,Earth,Electric,
         # Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd.
     )
