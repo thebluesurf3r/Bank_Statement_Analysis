@@ -55,7 +55,7 @@ st.markdown('<div class="title-container"><div class="title-text">Financial Tran
 
 # Initialize session state for documentation toggle if not already set
 if 'show_documentation' not in st.session_state:
-    st.session_state.show_documentation = True
+    st.session_state.show_documentation = False
 
 # Add the "Documentation" link to the sidebar
 with st.sidebar:
@@ -79,7 +79,7 @@ if st.session_state.show_documentation:
     )
 
 # Content that will be styled
-st.markdown('<div id="documentation">Your content here</div>', unsafe_allow_html=False)
+st.markdown('<div id="documentation">Your content here</div>', unsafe_allow_html=True)
 
 @st.cache_data
 def load_df():
