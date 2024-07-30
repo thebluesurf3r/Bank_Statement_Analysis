@@ -1,6 +1,6 @@
 # Documentation
 
-## Overview
+### Overview
 
 The **Bank Statement Analysis and Visualization Tool** helps you understand your financial transactions. Use it to track spending, manage your budget, and explore your financial trends.
 
@@ -13,7 +13,7 @@ The **Bank Statement Analysis and Visualization Tool** helps you understand your
 - **🔍 Entity Extraction**: Extract names or entities from transaction descriptions.
 - **📈 Interactive Visualizations**: View and interact with charts and graphs to understand your financial data.
 
-## Schema Definition
+### Schema Definition
 
 **Dimensions:**
 
@@ -29,14 +29,14 @@ The **Bank Statement Analysis and Visualization Tool** helps you understand your
 - **`credit_debit_value`**: Whether a transaction is a credit or debit.
 - **`transaction_count`**: The number of transactions.
 
-## Data Analysis
+### Data Analysis
 
 The tool uses **Pandas** and **Numpy** for analyzing your data:
 
 - **Pandas**: Handles data cleaning, aggregation (like total spending per category), and time series analysis.
 - **Numpy**: Performs numerical calculations and statistical analysis (such as mean and median).
 
-## Data Visualization
+### Data Visualization
 
 Visualizations are created with **Plotly**, including:
 
