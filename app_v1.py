@@ -75,7 +75,7 @@ if st.session_state.show_documentation:
             {doc_content}
         </div>
         ''',
-        unsafe_allow_html=True
+        unsafe_allow_html=False
     )
 
 # Content that will be styled
