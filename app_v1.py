@@ -1,38 +1,23 @@
-# Importing Streamlit for interactive web applications
+# Importing necessary libraries
 import streamlit as st
-
-# Importing Pandas for data manipulation and analysis
 import pandas as pd
-
-# Importing Matplotlib for basic plotting
 import matplotlib.pyplot as plt
-
-# Importing Plotly for interactive visualizations
 import plotly.express as px
 import plotly.graph_objs as go
-
-# Importing Seaborn for statistical data visualization
 import seaborn as sns
-
-# Importing Regular Expressions for pattern matching
 import re
-
-# Importing NumPy for numerical operations
 import numpy as np
-
-# Importing time
 import time
 
-# Setting page configuration
+# Page configuration
 st.set_page_config(
-    page_title="Bank Statement Analyzer",  # Title of the webpage
-    page_icon="📊",  # Emoji or icon displayed in the browser tab
-    layout="centered",  # Layout of the main content (options: 'centered', 'wide')
-    initial_sidebar_state="expanded"  # State of the sidebar when the app starts (options: 'auto', 'expanded', 'collapsed')
+    page_title="Bank Statement Analyzer",
+    page_icon="📊",
+    layout="centered",
+    initial_sidebar_state="expanded"
 )
 
-# Title and Introduction
-# Apply custom CSS for padding and border radius
+# Title and Introduction with custom CSS
 st.markdown("""
     <style>
     .title-container {
@@ -47,79 +32,131 @@ st.markdown("""
         color: white;
     }
     </style>
-    """, unsafe_allow_html=True)
-
-# Display the title with custom styles
-st.markdown('<div class="title-container"><div class="title-text">Financial Transaction Explorer</div>', unsafe_allow_html=True)
-
+    <div class="title-container"><div class="title-text">Financial Transaction Explorer</div></div>
+""", unsafe_allow_html=True)
 
 # Initialize session state for documentation toggle if not already set
 if 'show_documentation' not in st.session_state:
-    st.session_state.show_documentation = False
+    st.session_state.show_documentation = True
 
-# Add the "Documentation" link to the sidebar
+# Sidebar for documentation toggle
 with st.sidebar:
-    st.markdown('<p style="font-size: 16px;"></p>', unsafe_allow_html=True)
     if st.button('Documentation'):
         st.session_state.show_documentation = not st.session_state.show_documentation
     st.markdown('<hr>', unsafe_allow_html=True)
 
-# Toggle the display of the documentation
+# Display documentation if toggled on
 if st.session_state.show_documentation:
     with open('documentation.md', 'r') as f:
         doc_content = f.read()
-
-    st.markdown(
-        f'''
+    st.markdown(f'''
         <div id="documentation" style="padding: 30px; background-color: black; border-radius: 10px;">
             {doc_content}
         </div>
-        ''',
-        unsafe_allow_html=True
-    )
+        <style>
+            #documentation {{
+                animation: slideDown 0.5s ease-in-out;
+            }}
+            @keyframes slideDown {{
+                from {{
+                    max-height: 0;
+                    opacity: 0;
+                }}
+                to {{
+                    max-height: 500px;
+                    opacity: 1;
+                }}
+            }}
+        </style>
+    ''', unsafe_allow_html=True)
 
+# Caching data loading function
 @st.cache_data
 def load_df():
     file_path = 'merged_data.csv'
-    df = pd.read_csv(file_path)
-    return df
+    return pd.read_csv(file_path)
 
-# Load data using the caching function
 data = load_df()
 
-@st.cache_data
+# Cleaning data
 def process_data(df):
     # Formatting column names
-    df.columns = df.columns.str.replace(' ', '_')\
-                           .str.replace('-', '_')\
-                           .str.replace('/', '_')\
-                           .str.replace('.', '')\
-                           .str.lower()
+    df.columns = (df.columns.str.replace(' ', '_')
+                              .str.replace('-', '_')
+                              .str.replace('/', '_')
+                              .str.replace('.', '')
+                              .str.lower())
 
     # Check and replace '/' in dates if present
-    if df['transaction_date'].str.contains('/').any():
-        df['transaction_date'] = df['transaction_date'].str.replace('/', '-')
-    if df['value_date'].str.contains('/').any():
-        df['value_date'] = df['value_date'].str.replace('/', '-')
-    
+    date_columns = ['transaction_date', 'value_date']
+    for col in date_columns:
+        if df[col].str.contains('/').any():
+            df[col] = df[col].str.replace('/', '-')
+
     # Formatting dates
-    df['transaction_date'] = pd.to_datetime(df['transaction_date'], format='%d-%m-%Y')
-    df['value_date'] = pd.to_datetime(df['value_date'], format='%d-%m-%Y')
-    
+    for col in date_columns:
+        try:
+            df[col] = pd.to_datetime(df[col], format='%d-%m-%Y')
+            
+        except ValueError:
+            st.warning(f"Error parsing dates in column {col}. Ensure dates are in 'dd-mm-yyyy' format.")
+            return None
+
     # Splitting and mapping transaction details as boolean values
-    df[['transaction_type', 'transaction_number']] = df['chq___ref_no'].str.split('-', expand=True)
+    try:
+        df[['transaction_type', 'transaction_number']] = df['chq___ref_no'].str.split('-', expand=True)
+    except KeyError:
+        st.error("Column 'chq___ref_no' not found in the dataframe.")
+        return None
+
+    # Mapping 'dr___cr' to numerical values
     mapping = {'CR': 1, 'DR': -1}
-    df['credit_debit_value'] = df['dr___cr'].map(mapping)
-    
+    df['credit_debit_value'] = df['dr___cr'].map(mapping).fillna(0)
+
     # Adjusting net balance
-    df['net_balance'] = df['balance'] * df['credit_debit_value']
-    
+    try:
+        df['net_balance'] = df['balance'] * df['credit_debit_value']
+    except KeyError:
+        st.error("Column 'balance' not found in the dataframe.")
+        return None
+
     return df
 
 # Apply the processing function to the data
 data = process_data(data)
 
-import re
+if data is None:
+    st.error("Data processing failed. Please check the input data and try again.")
+
+st.divider()
+# Streamlit app
+def main():
+
+    # Create a multi-select box for toggle
+    transaction_types = st.multiselect(
+        "Select transaction types:",
+        ['Credit', 'Debit', 'Both']
+    )
+    
+    # Determine which values to set based on selection
+    if 'Both' in transaction_types:
+        toggle_values = [1, -1]
+    elif 'Credit' in transaction_types:
+        toggle_values = [1]
+    elif 'Debit' in transaction_types:
+        toggle_values = [-1]
+    else:
+        toggle_values = []
+
+    # Update DataFrame based on selected values
+    if 'Both' in transaction_types:
+        data['credit_debit_value'] = data['credit_debit_value'].apply(lambda x: x if x in toggle_values else None)
+    else:
+        data['credit_debit_value'] = data['credit_debit_value'].apply(lambda x: x if x in toggle_values else None)
+
+if __name__ == "__main__":
+    main()
+
 
 # Define the extract_name function
 def extract_name(description):
@@ -231,17 +268,16 @@ def categorize_buckets(description):
 
 
 # Defining payment method categorization
-def categorize_payment_method(description):
+def categorize_payment_method(transaction_type):
     patterns = {
         'Immediate Payment Service [IMPS]': r'IMPS',
-        'National Electronic Funds Transfer [NEFT]': r'NEFT',
+        'National Electronic Funds Transfer [NEFT]': r'NEFT|KKBKH|MB|MOBILE BANKING|TBMS',
         'Unified Payments Interface [UPI]': r'UPI',
-        'Automated Teller Machine [ATM]': r'ATM|DEBIT|CARD|VISA',
-        'Mobile Banking [MB]': r'MB|MOBILE BANKING',
+        'Automated Teller Machine [ATM]': r'ATL|DEBIT|CARD|VISA',
         'Point of Sale Card Transaction [PCD]': r'PCD',
-    }
+        }
     for method, pattern in patterns.items():
-        if re.search(pattern, description):
+        if re.search(pattern, transaction_type):
             return method
     return 'Other'
 
@@ -249,10 +285,9 @@ def categorize_payment_method(description):
 def categorize_payment_method_acronyms(description):
     patterns = {
         'IMPS': r'IMPS',
-        'NEFT': r'NEFT',
+        'NEFT': r'NEFT|MB|TBMS',
         'UPI': r'UPI',
         'ATM': r'ATM|DEBIT|CARD|VISA',
-        'MB': r'MB|MOBILE BANKING',
         'PCD': r'PCD',
     }
     for method, pattern in patterns.items():
@@ -420,7 +455,7 @@ if keyword:
         result_color = "white"
     else:
         result_text = "No matching transactions found."
-        result_color = "white"
+        result_color = "grey"
 else:
     # Count the "Other" values in the entire 'transaction_names' column
     unattributed_names = amount_filtered_data['transaction_names'].value_counts().get('Other', 0)
@@ -434,7 +469,7 @@ name_filtered_data = search_transactions(keyword, amount_filtered_data)
 balance_filtered_data = name_filtered_data[(name_filtered_data['amount'] >= min_amount) & (name_filtered_data['amount'] <= max_amount)]
 
 # Dropping redundant columns
-columns_to_preview = ['number_days', 'value_date','net_balance','payment_method_acronym', 'tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_type', 'transaction_number']
+columns_to_preview = ['number_days', 'value_date','net_balance','payment_method_acronym', 'tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_type', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_number']
 columns_to_analyze = ['sl_no', 'transaction_number', 'dr___cr1', 'transaction_type']
 
 visible_data = balance_filtered_data.drop(columns=columns_to_preview)
@@ -452,16 +487,16 @@ def color_date_gradient(val):
     color = f'background-color: rgba(5, 50, 10, {val})'
     return color
 
-#def apply_gradient_to_transaction_dates(dataframe):
-#    def color_date_gradient(value):
-#        return f'background: rgba(255, {int(255 * value)}, 0, 0.5)'
-#
-#    styled_data = dataframe.style.background_gradient(cmap='turbo_r')
-#    styled_data = styled_data.apply(lambda x: x.rank(pct=True).apply(color_date_gradient), subset=['transaction_date'])
-#    
-#    return styled_data
-#
-#styled_data = apply_gradient_to_transaction_dates(visible_data)
+def apply_gradient_to_transaction_dates(dataframe):
+    def color_date_gradient(value):
+        return f'background: rgba(255, {int(255 * value)}, 0, 0.5)'
+
+    styled_data = dataframe.style.background_gradient(cmap='viridis')
+    styled_data = styled_data.apply(lambda x: x.rank(pct=True).apply(color_date_gradient), subset=['transaction_date'])
+    
+    return styled_data
+
+gradient_data = apply_gradient_to_transaction_dates(preview_data)
 
 # Function to apply color coding based on 'credit_debit_value'
 def color_based_on_credit_debit(val, color_map):
@@ -492,7 +527,7 @@ styled_data = (visible_data_styled.style
                 .apply(lambda x: amount_styles, subset=['amount']))
 
 # Display the styled DataFrame
-st.dataframe(styled_data)
+st.dataframe(styled_data, hide_index=True)
 
 # Function to configure the visuals for distribution plots
 update_display_main = lambda fig: st.plotly_chart(
@@ -552,7 +587,7 @@ scatter_plot = px.scatter_3d(
     size='amount',
     title='Distribution of transaction values against balance over time',
     opacity=1,
-    labels={'amount': 'Amount spent', 'balance': 'Remaining balance', 'index': 'Days'}
+    labels={'amount': 'Amount spent', 'balance': 'Remaining balance', 'index': 'Transaction Count'}
 )
 
 # Add a 3D surface plot (Commented out in the original code)
