@@ -52,7 +52,7 @@ if st.session_state.show_documentation:
     st.markdown(f'''
         <div id="documentation" style="padding: 30px; background-color: black; border-radius: 10px;">
             {doc_content}
-        </div>
+    
     ''', unsafe_allow_html=True)
 
 # Caching data loading function
