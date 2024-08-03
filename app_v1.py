@@ -8,6 +8,9 @@ import seaborn as sns
 import re
 import numpy as np
 import time
+from transformers import pipeline
+from transformers import BertTokenizer, BertForTokenClassification, pipeline
+
 
 # Page configuration
 st.set_page_config(
@@ -158,6 +161,15 @@ if __name__ == "__main__":
     main()
 
 
+
+
+# Load the pre-trained BERT tokenizer and model for NER
+tokenizer = BertTokenizer.from_pretrained('dslim/bert-base-NER')
+model = BertForTokenClassification.from_pretrained('dslim/bert-base-NER')
+
+# Create a NER pipeline
+ner_pipeline = pipeline('ner', model=model, tokenizer=tokenizer, aggregation_strategy="simple")
+
 # Define the extract_name function
 def extract_name(description):
     # Regular expression to match names enclosed by slashes
@@ -211,6 +223,37 @@ def categorize_names(description):
         if re.search(pattern, description, re.IGNORECASE):
             return category
     return 'Other'
+
+# Function to extract names with BERT
+def extract_names_with_bert(description):
+    # Use the NER pipeline to get entities
+    entities = ner_pipeline(description)
+    # Extract names (entities labeled as 'PER')
+    names = [entity['word'] for entity in entities if entity['entity_group'] == 'PER']
+    return names
+
+# Integrate BERT NER with existing extraction and categorization
+def combined_extract_and_categorize(description):
+    # First try using the extract_name function
+    name_from_regex = extract_name(description)
+    
+    if name_from_regex != 'Other':
+        return name_from_regex
+    
+    # If regex-based extraction fails, use BERT NER
+    names_from_bert = extract_names_with_bert(description)
+    
+    if names_from_bert:
+        # Take the first name found by BERT
+        name = names_from_bert[0]
+        categorized_name = categorize_names(name)
+        if categorized_name != 'Other':
+            return categorized_name
+        else:
+            return name
+    return 'Other'
+
+
 
 # Define the categorize_brands function
 def categorize_brands(description):
@@ -296,16 +339,8 @@ def categorize_payment_method_acronyms(description):
     return 'Other'
 
 
-# Applying categorization functions
-# Define the combined function
-def combined_function_name(description):
-    name = extract_name(description)
-    if name == 'Other':
-        name = categorize_names(description)
-    return name
-
 # Apply the combined function to the 'description' column
-data['transaction_names'] = data['description'].apply(combined_function_name)
+data['transaction_names'] = data['description'].apply(extract_names_with_bert)
 data['payment_method'] = data['description'].apply(categorize_payment_method)
 data['payment_method_acronym'] = data['description'].apply(categorize_payment_method_acronyms)
 data['transaction_category'] = data['description'].apply(categorize_buckets)
