@@ -49,26 +49,7 @@ with st.sidebar:
 if st.session_state.show_documentation:
     with open('documentation.md', 'r') as f:
         doc_content = f.read()
-    st.markdown(f'''
-        <div id="documentation" style="padding: 30px; background-color: black; border-radius: 10px;">
-            {doc_content}
-        </div>
-        <style>
-            #documentation {{
-                animation: slideDown 0.5s ease-in-out;
-            }}
-            @keyframes slideDown {{
-                from {{
-                    max-height: 0;
-                    opacity: 0;
-                }}
-                to {{
-                    max-height: 500px;
-                    opacity: 1;
-                }}
-            }}
-        </style>
-    ''', unsafe_allow_html=True)
+    
 
 # Caching data loading function
 @st.cache_data
