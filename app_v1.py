@@ -52,7 +52,22 @@ if st.session_state.show_documentation:
     st.markdown(f'''
         <div id="documentation" style="padding: 30px; background-color: black; border-radius: 10px;">
             {doc_content}
-    
+        </div>
+        <style>
+            #documentation {{
+                animation: slideDown 0.5s ease-in-out;
+            }}
+            @keyframes slideDown {{
+                from {{
+                    max-height: 0;
+                    opacity: 0;
+                }}
+                to {{
+                    max-height: 500px;
+                    opacity: 1;
+                }}
+            }}
+        </style>
     ''', unsafe_allow_html=True)
 
 # Caching data loading function
@@ -143,78 +158,107 @@ if __name__ == "__main__":
     main()
 
 
-# Define the extract_name function
 def extract_name(description):
-    # Regular expression to match names enclosed by slashes
+    # Define regex patterns
     slash_pattern = re.compile(r'/([A-Za-z\s]+?)/')
-    # Regular expression to match names within a longer string
     embedded_pattern = re.compile(r'([A-Za-z]+(?:\s[A-Za-z]+)+)')
-    
-    # First, try to find names enclosed by slashes
-    matches = slash_pattern.findall(description)
-    
-    if matches:
-        extracted_name = matches[0].title()
+    specific_pattern = re.compile(r'SentIMPS\d+(\w+)\b')
+    youtube_pattern = re.compile(r'\b(?:sold by\s+)?youtube\b', re.IGNORECASE)
+    debit_card_pattern = re.compile(
+        r'\b(?:DEBIT CARD ANNUAL FEE \w{4}\d{4} FOR \d{4}|'
+        r'Chrg: Debit Card Annual Fee \d{4} For \d{4}|'
+        r'Rem Chrgs:Debit Card Annual Fee \d{4} For \d{4}|'
+        r'UPI/\w+/[\d\/]+/Debit Money Usi|'
+        r'Ins Debit A\\c SPLN \d+ dt \d{2}/\d{2}/\d{2,4}|'
+        r'Ins Debit A\\c PDL \d+ dt \d{2}/\d{2}/\d{2,4})', re.IGNORECASE
+    )
+    name_pattern = re.compile(r'\b[A-Z][a-z]+(?: [A-Z][a-z]+)*\b')
+    cognizant_pattern = re.compile(r'\bCOGNIZANT\b|\bCOGNIZ.*?\b', re.IGNORECASE)
+    amazon_pattern = re.compile(
+        r'\b(?:UPI/amazon(?:@apl|\.refu)?/\d+/.*|'
+        r'PCD/1186/(?:WWW\s)?AMAZON\s(?:IN|Seller\sServices|Pay)|'
+        r'PG\sAMAZON\sPAY\sINDIA\sPRI|'
+        r'UPI/Amazon\s(?:India|Prime\sRe(?:fund)?|Seller\sServices|Pay|Package)|'
+        r'UPI/AMAZON\sSELLER\sS(?:\s|/|UPI|MB\sUPI)?|'
+        r'UPI/AMAZON(?:\sSELLER\sS)?(?:/|UPI|MB\sUPI)?|'
+        r'PCD/1186/Amazon\s(?:Seller\sServices|Pay)|'
+        r'UPI/Amazon\s(?:India|Prime\sRe(?:fund)?)|'
+        r'UPI/AMAZON\s(?:SELLER\sS|SELLER\sS\s(?:UPI|MB\sUPI))\b'
+        r')',
+        re.IGNORECASE
+    )
+
+    def normalize_name(name):
+        """ Normalize name by reducing multiple spaces to a single space and stripping. """
+        return re.sub(r'\s+', ' ', name).strip()
+
+    # Try to find names with the Amazon pattern first
+    amazon_match = amazon_pattern.search(description)
+    if amazon_match:
+        extracted_name = 'Amazon'
     else:
-        # If no matches with slashes, try to find embedded names
-        matches = embedded_pattern.findall(description)
-        extracted_name = matches[0].title() if matches else 'Other'
+        # Try to find names with the Cognizant pattern
+        cognizant_match = cognizant_pattern.search(description)
+        if cognizant_match:
+            extracted_name = cognizant_match.group(0).title()
+        else:
+            # Check for YouTube patterns
+            youtube_match = youtube_pattern.search(description)
+            if youtube_match:
+                extracted_name = youtube_match.group(0).title()
+            else:
+                # Check for debit card patterns
+                debit_card_match = debit_card_pattern.search(description)
+                if debit_card_match:
+                    extracted_name = debit_card_match.group(0)
+                else:
+                    # If no matches with debit card pattern, try to find names enclosed by slashes
+                    slash_matches = slash_pattern.findall(description)
+                    if slash_matches:
+                        extracted_name = slash_matches[0].title()
+                    else:
+                        # If no matches with slashes, try to find names with specific patterns
+                        specific_matches = specific_pattern.findall(description)
+                        if specific_matches:
+                            extracted_name = specific_matches[0].title()
+                        else:
+                            # If no matches with specific patterns, try to find names with the name pattern
+                            name_matches = name_pattern.findall(description)
+                            if name_matches:
+                                extracted_name = name_matches[0].title()
+                            else:
+                                # If no matches with name pattern, try to find embedded names
+                                embedded_matches = embedded_pattern.findall(description)
+                                extracted_name = embedded_matches[0].title() if embedded_matches else 'Other'
+
+    # Normalize extracted name
+    extracted_name = normalize_name(extracted_name)
     
     # Categorize the extracted name
-    categorized_name = categorize_names(extracted_name)
-    if categorized_name != 'Other':
-        return categorized_name
-    else:
-        return extracted_name
+    categorized_name = categorize_name(extracted_name)
+    return categorized_name if categorized_name != 'Other' else extracted_name
+
+# Load the CSV file into a DataFrame
+def load_patterns_from_csv(file_path):
+    df = pd.read_csv(file_path)
+    return pd.Series(df.pattern.values, index=df.category).to_dict()
 
 # Define the categorize_names function
-def categorize_names(description):
-    patterns = {
-        'Vyom': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697|9958121100|fd booked|rd booked|vyomdeepansh-1@)\b',
-        'Kanishq Sharma': r'\b(muzicmapass|kanishq|kanishq sharma|kan |9873683245|8433204684)\b',
-        'Kasturi Sharma': r'\b(kast |kastoorisha|kastoori|kasturi|8789816580)\b',
-        'Ajay Sharma': r'\b(ajay sharma|9833640145)\b',
-        'Deepak Vishwakarma': r'\b(deepak vi|deepak kumar vi)\b',
-        'Anandita Jangra': r'\b(ananditajangra1|anandita|anandita jangra|8979655500)\b',
-        'Dhruv Parashar': r'\b(dhruv parashar)\b',
-        'Karanveer': r'\b(karancr8999|karanveer |karanveer|971585216969|9646862136)\b',
-        'Karan Talwar': r'\b(karan talwar)\b',
-        'Pragun Magan': r'\b(pragun magan|8447783423)\b',
-        'Yawar Rashid': r'\b(yawar rashid|9956394027)\b',
-        'Hitesh Bhagat': r'\b(hit |hitesh|hitesh bhagat|hiteshbhaga|ICICX5879|8447299009)\b',
-        'Akhriebu Pucho': r'\b(akhriebu pucho|akhriebu|9582384807)\b',
-        'Bhupesh Jingar': r'\b(bhupesh jingar|darsh jing|ICICX7180)\b',
-        'Vivek Tanti': r'\b(vivek|vivek tanti|vivektanti|vivektanti5|9172603649)\b',
-        'Vishal Tanti': r'\b(vishal|vishal tanti|vishaltanti|vishal.tant|UTIBX8285|9774973923)\b',
-        'Gaurav Yadav': r'\b(1993ygaurav|Gaurav Yadav)\b',
-        'Jegendra': r'\b(jegendermn7)\b',
-        'Parth Singh': r'\b(parth singh|9910270502)\b',
-        'Cognizant': r'\b(COGNIZANT SAL|Cogniz)\b',
-        'Paytm Wallet': r'\b(@payt|add-money)\b'
-    }
+def categorize_name(extracted_name, patterns_csv='patterns.csv'):
+    # Load patterns from CSV
+    patterns = load_patterns_from_csv(patterns_csv)
+    
     for category, pattern in patterns.items():
-        if re.search(pattern, description, re.IGNORECASE):
+        if re.search(pattern, extracted_name, re.IGNORECASE):
             return category
     return 'Other'
 
 # Define the categorize_brands function
-def categorize_brands(description):
-    name = extract_name(description)
+def categorize_brands(extracted_name):
+    name = extract_name(extracted_name)
     if name == 'Other':
         patterns = {
-            'Zomato': r'\bzomato\b',
-            'Amazon': r'\bamazon\b',
-            'Rento Mojo': r'\b(rento|mojo)\b',
-            'DBHVN': r'\b(dakshin|dbhvn)\b',
-            'Bookmyshow': r'\bbookmyshow\b',
-            'Makemytrip': r'\bmakemytrip\b',
-            'Flipkart': r'\b(flipka|flipkart)\b',
-            'Swiggy': r'\bswiggy\b',
-            'Blinkit': r'\b(grofers|blinkit)\b',
-            'Airtel': r'\b(airtel|bharti|BhartiAirte)\b',
-            'Paytm': r'\bpaytm\b',
-            'GPay': r'\b(gpay|google)\b',
-            'Aditya Birla': r'\b(aditya birla fa)\b'
+            
         }
         for category, pattern in patterns.items():
             if re.search(pattern, description, re.IGNORECASE):
@@ -223,40 +267,47 @@ def categorize_brands(description):
     else:
         return name
 
-def categorize_buckets(description):
-    name = extract_name(description)
+def categorize_buckets(name):
+    name = extract_name(name)
     patterns = {
         'Self': r'\b(vyomdeepans|vyom|vyom deepansh|8447156697|fd booked|rd booked)\b',
         'Family': r'\b(muzicmapass|kanishq|kanishq sharma|kan |kast |kastoorisha|kastoori|kasturi|deepak vi|deepak kumar vi)\b',
         'Friends': r'\b(ananditajangra1|anandita|vivek|vivektanti5|vishal|tanti|hites|bhaga)\b',
-        'Utilities': r'\b(bharti|airtel|paytmairtelrecharge|dakshin|dbhvn|rento|mojo|airtelin|paytm_airtelrecharge)\b',
+        'Utilities': r'\b(bharti|airtel|paytmairtelrecharge|dakshin|dbhvn|rento|mojo|airtelin|airtelrecharge)\b',
         'Misc': r'\b(thapa|ricky)\b',
-        'Fuel': r'\b(gas|petro|pump|station|petrol|fuel|auto|care|filling)\b',
-        'Groceries': r'\b(grofers|fast n fresh|sandeep|vandanachawla|7015758745)\b',
+        'Fuel': r'\b(?:Hpcl Auto Care Center|Auto Care Centre Hpcl|Fuel Junction|Gupta Service Station|Enroute Sahays Filling|City Fuels|Jawala Service Station|Spr Petro|Rama Filling Station|M S Suraj Auto|Meer Singh Fuel Point|Navyug Fuels|Shree Shyam Petro|Petro Mall|Dhruvika Petro|H P Hira Fuels|Infinity Fuels|Pauls Petro Mar|Raghunandan Filling St|Rama Filling St|Meer Singh Fuel|Hello Fuels)\b',
+        'Groceries': r'\b(?:grofers|fast\s*n\s*fresh|sandeep|bala ji|balaji\s*(?:super|distribu)?|vandanachawla|7015758745)\b',
         'ATM Withdrawal': r'\b(atm|card)\b',
+        'Wikimedia': r'\b(wikimedia)\b',
         'Salary Credit': r'\b(rcvd|cognizant|fis)\b',
         'Ecommerce': r'\b(amazon|flipk|kart)\b',
-        'Liquor': r'\b(liquor|wine|country)\b',
+        'Liquor': r'\b(?:LIQUOR|WINE|WINES|WINE & BEER|LIQUORLAND|VINTAGE WINES|LAKE FOREST WINES|DISCOVERY LIQUOR|ABOHAR LIQUOR|SHIVAM WINES|G TOWN WINES|TIME FOR WINE)\b',
+        
         'Loan': r'\b(loan|SPLN|Ins Debit)\b',
         'House Rent': r'\b(bhupesh|darsh|jing|ICICX7180|landlord)\b',
         'Trading': r'\b(nextbillion|groww)\b',
         'Travel': r'\b(makemy|travel|bnb|oyo)\b',
         'Movies': r'\b(bookmy|pvr|cinepolis|cinema|movi|ny cinemas)\b',
-        'Food': r'\b(9891020216|twenty four seven|chick po|paan|dhaba|restaurant|food|food court|tea|zomato|the ducktales|vendiman)\b',
+        'Food': r'\b(9891020216|twenty four seven|foods|chick po|paan|dhaba|restaurant|food|food court|tea|zomato|the ducktales|vendiman)\b',
     }
     for category, pattern in patterns.items():
-        if re.search(pattern, name, re.IGNORECASE) or re.search(pattern, description, re.IGNORECASE):
+        if re.search(pattern, name, re.IGNORECASE) or re.search(pattern, name, re.IGNORECASE):
             return category
     
-    # If no match is found, categorize using categorize_brands
-    return categorize_brands(description)
+    # Check each pattern against the name
+    for category, pattern in patterns.items():
+        if re.search(pattern, name, re.IGNORECASE):
+            return category
+    
+    # If no match is found, return 'Other'
+    return 'Other'
 
 
 # Defining payment method categorization
 def categorize_payment_method(transaction_type):
     patterns = {
         'Immediate Payment Service [IMPS]': r'IMPS',
-        'National Electronic Funds Transfer [NEFT]': r'NEFT|KKBKH|MB|MOBILE BANKING|TBMS',
+        'National Electronic Funds Transfer [NEFT]': r'NEFT|KKBKH|MB|MOBILE BANKING|TBMS|PDL|SPLN',
         'Unified Payments Interface [UPI]': r'UPI',
         'Automated Teller Machine [ATM]': r'ATL|DEBIT|CARD|VISA',
         'Point of Sale Card Transaction [PCD]': r'PCD',
@@ -281,12 +332,13 @@ def categorize_payment_method_acronyms(description):
     return 'Other'
 
 
-# Applying categorization functions
 # Define the combined function
 def combined_function_name(description):
     name = extract_name(description)
     if name == 'Other':
-        name = categorize_names(description)
+        name = categorize_name(description)  # Categorize the description as a name
+        if name == 'Other':
+            name = categorize_brands(description)  # Categorize the description as a brand
     return name
 
 # Apply the combined function to the 'description' column
@@ -387,7 +439,7 @@ transaction_date_data = data[(data['transaction_date'] >= start_date) & (data['t
 
 # Amount Slider
 min_amount = 0
-max_amount = 50000
+max_amount = 70000
 
 # Create a single seekbar handle for the amount range
 slider_value_amount = st.sidebar.slider(
@@ -402,7 +454,7 @@ filtered_1data = transaction_date_data[transaction_date_data['amount'] <= slider
 
 # Balance Slider
 min_balance = 0
-max_balance = 75000
+max_balance = 90000
 
 # Create a single seekbar handle for the amount range
 slider_value_amount = st.sidebar.slider(
@@ -454,7 +506,7 @@ name_filtered_data = search_transactions(keyword, amount_filtered_data)
 balance_filtered_data = name_filtered_data[(name_filtered_data['amount'] >= min_amount) & (name_filtered_data['amount'] <= max_amount)]
 
 # Dropping redundant columns
-columns_to_preview = ['number_days', 'value_date','net_balance','payment_method_acronym', 'tag', 'name', 'sl_no', 'chq___ref_no', 'transaction_type', 'transaction_number', 'dr___cr', 'dr___cr1', 'payment_type', 'transaction_number']
+columns_to_preview = ['number_days', 'value_date','net_balance','payment_method_acronym', 'sl_no', 'chq___ref_no', 'transaction_type', 'transaction_number', 'dr___cr', 'dr___cr1', 'transaction_number']
 columns_to_analyze = ['sl_no', 'transaction_number', 'dr___cr1', 'transaction_type']
 
 visible_data = balance_filtered_data.drop(columns=columns_to_preview)
