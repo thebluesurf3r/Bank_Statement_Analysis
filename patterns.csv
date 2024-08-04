@@ -1,0 +1,43 @@
+category,pattern
+Vyom,\b(vyomdeepans|vyom|vyom deepansh|8447156697|9958121100|fd booked|rd booked|vyomdeepansh-1)\b
+Kanishq Sharma,\b(muzicmapass|kanishq(?: sharma)?|kan|9873683245|8433204684)\b
+Kasturi Sharma,(?i)\b(kast(?:oori(?:sharma)?|oorisha)?|8789816580|KASTURI SHAR)\b
+Ajay Sharma,\b(ajay sharma|9833640145)\b
+Deepak Vishwakarma,\b(deepak (?:vishwakarma|kumar vi))\b
+Anandita Jangra,\b(anandita(?: jangra)?|8979655500|ananditajangra1)\b
+Dhruv Parashar,\b(dhruv parashar)\b
+Karanveer,\b(karancr8999|karanveer|971585216969|9646862136)\b
+Karan Talwar,\b(karan talwar)\b
+Pragun Magan,\b(pragun magan|8447783423)\b
+Yawar Rashid,\b(yawar rashid|9956394027)\b
+Hitesh Bhagat,\b(hitesh(?: bhagat|bhaga)?|hit|ICICX5879|8447299009)\b
+Akhriebu Pucho,\b(akhriebu(?: pucho)?|9582384807)\b
+Bhupesh Jingar,\b(bhupesh jingar|darsh jing|ICICX7180)\b
+Vivek Tanti,\b(vivek(?: tanti|tanti5)?|9172603649)\b
+Vishal Tanti,\b(vishal(?: tanti|tanti|\.tant)?|UTIBX8285|9774973923)\b
+Gaurav Yadav,\b(1993ygaurav|Gaurav Yadav)\b
+Jegendra,\b(jegendermn7)\b
+Parth Singh,\b(parth singh|9910270502)\b
+Dominos,\b(dominos)\b
+Bagril Biotech,bagril
+Cognizant,\bCOGNIZANT\b|\bCOGNIZ.*?\b
+Zomato,\bZomato\b(?: Media Pr| Ltd)?
+Amazon,\amazon|amazon@apl|you are pay|amazon india|amazon pay|amazon seller\b
+Rento Mojo,\b(edunetwork|rento|rentomojo|rentomojorazorp|rentomojorentpa)\b
+DBHVN,\b(dakshin|dbhvn)\b
+Bookmyshow,\b(bookmyshow)\b
+Makemytrip,\b(makemytrip)\b
+Flipkart,\b(flipka|flipkart)\b
+Swiggy,\b(swiggy)\b
+Blinkit,\b(grofers|blinkit)\b
+Licious,\b(licious)\b
+Airtel,\b(airtel|bharti|BhartiAirte)\b
+Aditya Birla,\b(aditya birla fa|ABFL)\b
+Uber,\b(uberrides|uber)\b
+Ola,\bola\s+(money|financial)\b
+Netflix,\bnetflix(?:\scom)?\b
+YouTube,\b(?:sold by\s+youtube|youtube(?:\s?prem)?)\b
+Google,\b(google india di)\b
+Paytm Wallet,\b(payt|add-money)\b
+Personal Loan,\b(SPLN|PDL)\b
+Kotak,\bchr?gs?|annual fee|cw fee\b
