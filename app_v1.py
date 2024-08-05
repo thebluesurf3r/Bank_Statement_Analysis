@@ -17,6 +17,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Add Google Tag Manager script
+st.markdown("""
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-YEJPSC7F2W"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-YEJPSC7F2W');
+    </script>
+""", unsafe_allow_html=True)
+
 # Title and Introduction with custom CSS
 st.markdown("""
     <style>
