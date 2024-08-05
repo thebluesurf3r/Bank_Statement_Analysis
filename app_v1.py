@@ -30,8 +30,7 @@ st.markdown("""
     </script>
 """, unsafe_allow_html=True)
 
-# Google Tag Manager script
-# Add Google Tag Manager script
+# Google Tag Manager <head> script
 st.markdown("""
     <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -40,6 +39,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','GTM-MS7DW4T');</script>
 <!-- End Google Tag Manager -->
+""", unsafe_allow_html=True)
+
+# Google Tag Manager <body> script
+st.markdown("""
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MS7DW4T"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
 """, unsafe_allow_html=True)
 
 
