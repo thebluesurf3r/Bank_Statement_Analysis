@@ -85,6 +85,21 @@ if st.session_state.show_documentation:
     st.markdown(f'''
         <div id="documentation" style="padding: 30px; background-color: black; border-radius: 10px;">
             {doc_content}
+        <style>
+            #documentation {{
+                animation: slideDown 0.5s ease-in-out;
+            }}
+            @keyframes slideDown {{
+                from {{
+                    max-height: 0;
+                    opacity: 0;
+                }}
+                to {{
+                    max-height: 500px;
+                    opacity: 1;
+                }}
+            }}
+        </style>
     ''', unsafe_allow_html=True)
 
 # Caching data loading function
@@ -329,7 +344,6 @@ def categorize_buckets(name):
         'Fuel': r'\b(?:Hpcl Auto Care Center|Auto Care Centre Hpcl|Fuel Junction|Gupta Service Station|Enroute Sahays Filling|City Fuels|Jawala Service Station|Spr Petro|Rama Filling Station|M S Suraj Auto|Meer Singh Fuel Point|Navyug Fuels|Shree Shyam Petro|Petro Mall|Dhruvika Petro|H P Hira Fuels|Infinity Fuels|Pauls Petro Mar|Raghunandan Filling St|Rama Filling St|Meer Singh Fuel|Hello Fuels)\b',
         'Groceries': r'\b(?:grofers|fast\s*n\s*fresh|sandeep|bala ji|balaji\s*(?:super|distribu)?|vandanachawla|7015758745)\b',
         'ATM Withdrawal': r'\b(atm|card)\b',
-        'Wikimedia': r'\b(wikimedia)\b',
         'Salary Credit': r'\b(rcvd|cognizant|fis)\b',
         'Ecommerce': r'\b(amazon|flipk|kart)\b',
         'Liquor': r'\b(?:LIQUOR|WINE|WINES|WINE & BEER|LIQUORLAND|VINTAGE WINES|LAKE FOREST WINES|DISCOVERY LIQUOR|ABOHAR LIQUOR|SHIVAM WINES|G TOWN WINES|TIME FOR WINE)\b',
@@ -398,22 +412,58 @@ data['payment_method'] = data['description'].apply(categorize_payment_method)
 data['payment_method_acronym'] = data['description'].apply(categorize_payment_method_acronyms)
 data['transaction_category'] = data['transaction_names'].apply(categorize_buckets)
 
-def format_numeric_columns(data, columns):
-    # Function to remove commas and convert to integer
-    def format_numeric_values(numeric_values):
-        numeric_values = numeric_values.str.replace(',', '')
-        return numeric_values
-
-    # Applying the function to the relevant numeric columns
-    data[columns] = data[columns].apply(format_numeric_values)
-    
-    # Converting those columns to appropriate data types (integer)
-    data[columns] = data[columns].apply(lambda x: pd.to_numeric(x).astype(int))
-    
+def clean_columns(data, columns):
+    for column in columns:
+        data[column] = data[column].str.replace(',', '')
+        data[column] = data[column].str.split('.').str[0]
+        data[column] = data[column].astype(int)
     return data
 
-# Example usage:
-data = format_numeric_columns(data, ['amount', 'balance'])
+# Columns to be cleaned
+columns_to_clean = ['amount', 'balance']
+data = clean_columns(data, columns_to_clean)
+
+multiplier = 2
+bin_edges = [0]
+for i in range(1, 21):
+    next_edge = bin_edges[-1] * multiplier if bin_edges[-1] > 0 else 500
+    bin_edges.append(next_edge)
+
+bin_labels = [f"{int(bin_edges[i])}-{int(bin_edges[i+1])}" for i in range(len(bin_edges)-1)]
+
+# Create the balance_category column
+data['balance_category'] = pd.cut(data['balance'], bins=bin_edges, labels=bin_labels, right=False)
+
+# Create a mapping dictionary from labels to numerical values
+label_mapping = {label: i for i, label in enumerate(bin_labels)}
+
+# Map the balance_category to numerical values
+data['balance_category_num'] = data['balance_category'].map(label_mapping)
+
+bin_edges = [0]
+for i in range(1, 21):
+    next_edge = bin_edges[-1] * multiplier if bin_edges[-1] > 0 else 500
+    bin_edges.append(next_edge)
+
+bin_labels = [f"{int(bin_edges[i])}-{int(bin_edges[i+1])}" for i in range(len(bin_edges)-1)]
+
+# Create the balance_category column
+data['amount_category'] = pd.cut(data['amount'], bins=bin_edges, labels=bin_labels, right=False)
+
+# Create a mapping dictionary from labels to numerical values
+label_mapping = {label: i for i, label in enumerate(bin_labels)}
+
+# Map the balance_category to numerical values
+data['amount_category_num'] = data['amount_category'].map(label_mapping)
+
+# Extract year and month and create a categorical column in the desired format
+data['transaction_month'] = data['transaction_date'].dt.strftime('%b %Y')  # Format: 'Apr 2023'
+data['transaction_year'] = data['transaction_date'].dt.strftime('%Y')  # Format: '2023'
+
+# Optionally, you can sort and see the data
+data.sort_values(by='transaction_date', inplace=True)
+
+data['transaction_date'].nunique()
 
 st.sidebar.markdown('<h1 class="sidebar-title">Report Configuration</h1>', unsafe_allow_html=True)
 
@@ -652,8 +702,8 @@ def generate_ripple_effect(filtered_data, n_points=300):
 
     transaction_count = filtered_data['transaction_names'].nunique()
 
-    x_ripple = np.random.uniform(filtered_data['balance'].min(), filtered_data['balance'].max(), n_points)
-    y_ripple = np.random.uniform(filtered_data['amount'].min(), filtered_data['amount'].max(), n_points)
+    x_ripple = np.random.uniform(filtered_data['balance_category_num'].min(), filtered_data['balance_category_num'].max(), n_points)
+    y_ripple = np.random.uniform(filtered_data['amount_category_num'].min(), filtered_data['amount_category_num'].max(), n_points)
     z_ripple = np.random.uniform(0, transaction_count, n_points)
     size_ripple = np.random.uniform(75, 4, n_points)
 
@@ -739,17 +789,19 @@ update_display_dist(distribution_names)
 
  # Create and display the parallel categories plot with labels
 labels = {
-            "transaction_date": "Transaction Date",
-            "transaction_names": "Transaction Names",
-            "transaction_category": "Transaction Category",
-            "payement_method_acronym": "Payment Method"
+            "transaction_month": "Month",
+            "transaction_year": "Year",
+            "transaction_category": "Category",
+            "payment_method_acronym": "Payment Method",
+            "amount_category_num": "Amount Scale"
         }
 
 # Parallel categories        
 fig = px.parallel_categories(
             filtered_data,
-            dimensions=['transaction_names', 'transaction_category', 'payment_method_acronym'],
+            dimensions=['transaction_month', 'transaction_year', 'payment_method_acronym', 'transaction_category'],
             labels=labels,
+            color='amount_category_num',
             title='Parallel categories plot between transaction date, transaction category and payment method'
         )
 update_display_main(fig)
