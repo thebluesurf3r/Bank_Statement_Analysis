@@ -17,8 +17,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Google Tag Manager <head> script
-st.markdown("""
+
+# Google Tag <head> script
+
+google_tag = """
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -26,7 +28,8 @@ st.markdown("""
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-MS7DW4T');</script>
     <!-- End Google Tag Manager -->
-""", unsafe_allow_html=True)
+"""
+st.markdown(google_tag, unsafe_allow_html=True)
 
 # Google Tag script
 st.markdown("""
