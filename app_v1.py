@@ -21,6 +21,8 @@ st.set_page_config(
 # Google Tag <head> script
 
 google_tag = """
+    <html>
+    <head>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-YEJPSC7F2W"></script>
     <script>
@@ -41,10 +43,14 @@ gtm_head = """
     <!-- End Google Tag Manager -->
 """
 gtm_body = """
+    <body>
     <!-- Google Tag Manager (noscript) -->
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MS7DW4T"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
+    </body>
+    </head>
+    </html>
 """
 
 # Google Tag
