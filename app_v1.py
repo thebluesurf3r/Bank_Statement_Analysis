@@ -19,8 +19,6 @@ st.set_page_config(
 
 # Google Tag Manager <head> script
 st.markdown("""
-<!DOCTYPE html>
-<html lang="en">
 <head>
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -52,7 +50,6 @@ st.markdown("""
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
 </body>
-</html>
 """, unsafe_allow_html=True)
 
 
